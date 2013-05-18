@@ -12,13 +12,10 @@ make
 
 Then you get `clih3c` executable file.
 
-> -h --help        print help screen
-
-> -u --user        user account
-
-> -p --password    password
-
-> -i --iface       network interface (default is eth0)
-
-> -d --daemonize   daemonize
-
+```bash
+-h --help        print help screen
+-u --user        user account
+-p --password    password
+-i --iface       network interface (default is eth0)
+-d --daemonize   daemonize
+```
