@@ -1,15 +1,14 @@
-CXXFLAG = -c -std=c++11 -Wall -O2
+CXXFLAGS=-Wall -L/home/zonyitoo/clih3c/src/OpenWrt-Toolchain-ar71xx-for-mips_r2-gcc-4.6-linaro_uClibc-0.9.33.2/toolchain-mips_r2_gcc-4.6-linaro_uClibc-0.9.33.2/lib
+LDFLAGS=-L/home/zonyitoo/clih3c/src/OpenWrt-Toolchain-ar71xx-for-mips_r2-gcc-4.6-linaro_uClibc-0.9.33.2/toolchain-mips_r2_gcc-4.6-linaro_uClibc-0.9.33.2/lib
 
-all: clih3c
-
-clih3c: eapauth.o main.o
-	$(CXX) $^ -o $@
-
-eapauth.o: eapauth.cpp eapauth.h eapdef.h
-	$(CXX) $(CXXFLAG) $< -o $@
+clih3c: main.o eapauth.o
+	$(CXX) $(LDFLAGS) $^ -o $@ $(LIBS)
 
 main.o: main.cpp eapauth.h eapdef.h
-	$(CXX) $(CXXFLAG) $< -o $@
+	$(CXX) $(CXXFLAGS) -c -o $@ $<
+
+eapauth.o: eapauth.cpp eapauth.h eapdef.h
+	$(CXX) $(CXXFLAGS) -c -o $@ $<
 
 clean:
-	rm -f *.o
+	rm -f *.o clih3c

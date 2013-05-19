@@ -2,7 +2,6 @@
 
 #include "eapdef.h"
 #include <netpacket/packet.h>
-#include <functional>
 #include <iostream>
 #include <stdexcept>
 
@@ -13,8 +12,8 @@ class EAPAuth {
 
         void auth() const;
         void logoff();
-        void redirect_promote(const std::function<void(const std::string&)>&);
-        void set_status_changed_listener(const std::function<void(int statno)>&);
+        void redirect_promote(void (*)(const std::string&));
+        void set_status_changed_listener(void (*)(int statno));
 
         std::string get_user_name() const;
 
@@ -38,8 +37,8 @@ class EAPAuth {
 
         struct sockaddr_ll sock_addr;
 
-        std::function<void(const std::string&)> display_promote;
-        std::function<void(int statno)> status_notify;
+        void (*display_promote)(const std::string&);
+        void (*status_notify)(int statno);
 };
 
 class EAPAuthException : public std::runtime_error {

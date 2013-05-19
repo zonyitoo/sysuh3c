@@ -53,6 +53,34 @@ void daemonize() {
     signal(SIGINT, interrupt_handler);
 }
 
+bool haslogin = false;
+int autoretry_count = 5;
+string name, password, iface("eth0");
+bool toDaemon = false;
+
+static void status_callback(int statno) {
+    cout << strstat(statno) << endl;
+    switch (statno) {
+        case EAPAUTH_EAP_SUCCESS:
+            haslogin = true;
+            autoretry_count = 5;
+            if (toDaemon)
+                daemonize();
+            break;
+        case EAPAUTH_EAP_FAILURE:
+            haslogin = false;
+            break;
+    }
+}
+
+static void promote_callback(const string& msg) {
+    string cpmsg(msg);
+    cpmsg.erase(0, cpmsg.find_first_not_of("\t\n\r"));
+    cpmsg.erase(cpmsg.find_last_not_of("\t\n\r") + 1);
+    if (!cpmsg.empty())
+        cout << cpmsg << endl; 
+}
+
 int main(int argc, char **argv) {
 
     if (argc < 3) {
@@ -79,9 +107,7 @@ int main(int argc, char **argv) {
         {NULL, 0, NULL, 0}
     };
     
-    string name, password, iface("eth0");
-    bool daemon = false;
-    char argval;
+        char argval;
     while ((argval = getopt_long(argc, argv, "u:p:i:d", arglist, NULL)) != -1) {
         switch (argval) {
             case 'h':
@@ -102,7 +128,7 @@ int main(int argc, char **argv) {
                 iface = optarg;
                 break;
             case 'd':
-                daemon = true;
+                toDaemon = true;
                 break;
             default:
                 printf("Argument Error. Unknown option.\n");
@@ -117,37 +143,15 @@ int main(int argc, char **argv) {
     
     EAPAuth authservice(name, password, iface);
 
-    authservice.redirect_promote([] (const string& msg) {
-        string cpmsg(std::move(msg));
-        cpmsg.erase(0, cpmsg.find_first_not_of("\t\n\r"));
-        cpmsg.erase(cpmsg.find_last_not_of("\t\n\r") + 1);
-        if (!cpmsg.empty())
-            cout << cpmsg << endl; 
-    });
+    authservice.redirect_promote(promote_callback);
     
-    bool haslogin = false;
-    int autoretry_count = 5;
-
-    authservice.set_status_changed_listener([&] (int8_t statno) {
-        cout << strstat(statno) << endl;
-        switch (statno) {
-        case EAPAUTH_EAP_SUCCESS:
-            haslogin = true;
-            autoretry_count = 5;
-            if (daemon)
-                daemonize();
-            break;
-        case EAPAUTH_EAP_FAILURE:
-            haslogin = false;
-            break;
-        }
-    });
+    authservice.set_status_changed_listener(status_callback);
 
     FILE *fp = fopen(lockfname, "r");
-    if (fp != nullptr) {
+    if (fp != NULL) {
         pid_t pid;
         fscanf(fp, "%d", &pid);
-        int ret = kill(pid, SIGINT);
+        kill(pid, SIGINT);
         fclose(fp);
     }
 

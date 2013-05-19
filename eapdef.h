@@ -64,7 +64,7 @@ inline std::string get_EAPOL(uint8_t type, const std::string& payload = std::str
     len = htons(len);
     result.append((char *)(&len), sizeof(len));
     result.append(payload);
-    return std::move(result);
+    return result;
 }
 
 inline std::string get_EAP(uint8_t code, uint8_t id, uint8_t type, 
@@ -84,7 +84,7 @@ inline std::string get_EAP(uint8_t code, uint8_t id, uint8_t type,
         result.append((char *)(&type), sizeof(type));
         result.append(data);
     }
-    return std::move(result);
+    return result;
 }
 
 inline std::string get_ethernet_header(const std::string& src, const std::string& dst, 
@@ -93,7 +93,7 @@ inline std::string get_ethernet_header(const std::string& src, const std::string
     std::string result(dst);
     result.append(src);
     result.append((char *)(&type), sizeof(type));
-    return std::move(result);
+    return result;
 }
 
 enum {

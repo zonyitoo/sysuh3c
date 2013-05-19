@@ -9,14 +9,21 @@
 #include <cstdio>
 #include <stdexcept>
 #include <stdarg.h>
-#include <iconv.h>
+#include <cstdlib>
+
+static void display_promote_func(const std::string& msg) {
+    std::cout << msg << std::endl;
+}
+
+static void status_notify_func(int statno) {
+    std::cout << strstat(statno) << std::endl;
+}
 
 EAPAuth::EAPAuth(const std::string& user_name, 
         const std::string& password, const std::string& iface)
     :  client_fd(-1),
     iface(iface), user_name(user_name), user_password(password),
-    display_promote([this] (const std::string& os) { std::cout << os << std::endl; }),
-    status_notify([this] (int8_t statno) { std::cout << "statno=" << statno << std::endl; })
+    display_promote(display_promote_func), status_notify(status_notify_func)
 {
     if ((client_fd = socket(AF_PACKET, SOCK_RAW, htons(ETHERTYPE_PAE))) < 0) {
         perror("socket");
@@ -204,36 +211,7 @@ bool EAPAuth::eap_handler(const std::string& eap_packet) const {
             }
             break;
         case 10:
-            {
-                iconv_t cd = iconv_open("UTF-8", "GBK");
-                if (cd == (iconv_t) -1) {
-                    perror("iconv_open");
-                    break;
-                }
-                size_t outleft = (eap_packet.length() + 1 - 12) * 2;
-                char *buf = new char[outleft];
-                size_t inleft = eap_packet.length() + 1 - 12;
-                char *p_in = const_cast<char *>(eap_packet.c_str()) + 12;
-
-                char *p_out = buf;
-                while (inleft != 0) {
-                    size_t ret = iconv(cd, &p_in, &inleft, &p_out, &outleft);
-                    if (ret == (size_t) -1) {
-                        *p_out = *p_in;
-                        p_out ++;
-                        p_in ++;
-                        inleft --;
-                        outleft --;
-                    }
-                }
-
-                std::string convstr(buf);
-                convstr.append(p_in);
-                display_promote(std::move(convstr));
-
-                delete [] buf;
-                break;
-            }
+            break;
         default:
             status_notify(EAPAUTH_UNKNOWN_EAP_CODE);
     }
@@ -261,11 +239,11 @@ void EAPAuth::logoff() {
     send_logoff();
 }
 
-void EAPAuth::redirect_promote(const std::function<void (const std::string &)> &func) {
+void EAPAuth::redirect_promote(void (*func)(const std::string&)) {
     display_promote = func;
 }
 
-void EAPAuth::set_status_changed_listener(const std::function<void(int)> &func) {
+void EAPAuth::set_status_changed_listener(void (*func)(int statno)) {
     status_notify = func;
 }
 
