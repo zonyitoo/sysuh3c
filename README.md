@@ -29,6 +29,7 @@ export STAGING_DIR=/path/to/your/toolchain
 ```
 
 * After that. You can run make to compile the source.
+
 ```
 make
 ```
