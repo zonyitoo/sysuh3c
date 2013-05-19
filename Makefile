@@ -1,8 +1,10 @@
-CXXFLAGS=-Wall -L/home/zonyitoo/clih3c/src/OpenWrt-Toolchain-ar71xx-for-mips_r2-gcc-4.6-linaro_uClibc-0.9.33.2/toolchain-mips_r2_gcc-4.6-linaro_uClibc-0.9.33.2/lib
-LDFLAGS=-L/home/zonyitoo/clih3c/src/OpenWrt-Toolchain-ar71xx-for-mips_r2-gcc-4.6-linaro_uClibc-0.9.33.2/toolchain-mips_r2_gcc-4.6-linaro_uClibc-0.9.33.2/lib
+CXXFLAGS= -Wall 
+LDFLAGS= 
+
+CXX=mips-openwrt-linux-g++
 
 clih3c: main.o eapauth.o
-	$(CXX) $(LDFLAGS) $^ -o $@ $(LIBS)
+	$(CXX) $(LDFLAGS) $^ -o $@
 
 main.o: main.cpp eapauth.h eapdef.h
 	$(CXX) $(CXXFLAGS) -c -o $@ $<
