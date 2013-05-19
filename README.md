@@ -1,6 +1,6 @@
 # CLI H3C Client
 
-A CLI H3C CLient in \*NIX
+A CLI H3C Client in \*NIX
 
 ## Usage
 
@@ -19,3 +19,6 @@ Then you get `clih3c` executable file.
 -i --iface       network interface (default is eth0)
 -d --daemonize   daemonize
 ```
+
+## Another version for OpenWRT
+Now is avaliable on **Branch OpenWRT**
