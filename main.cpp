@@ -29,11 +29,10 @@ void daemonize() {
     if (pid > 0) exit(EXIT_SUCCESS);
 
     setsid();
-    for (int i = getdtablesize(); i >= 0; -- i)
-        close(i);
-    int nullfd = open("/dev/null", O_RDWR);
-    dup(nullfd);
-    dup(nullfd);
+
+    freopen("/dev/null", "r", stdin);
+    freopen("/dev/null", "w", stdout);
+    freopen("/dev/null", "w", stderr);
 
     umask(027);
     chdir("/tmp");
