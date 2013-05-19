@@ -109,6 +109,11 @@ int main(int argc, char **argv) {
                 exit(EXIT_FAILURE);
         }
     }
+
+    if (name.empty() || password.empty() || iface.empty()) {
+        fprintf(stderr, "Argument Error. You should provide valid name and password.");
+        return -1;
+    }
     
     EAPAuth authservice(name, password, iface);
 
