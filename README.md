@@ -1,12 +1,12 @@
 # CLI H3C Client
 
-A CLI H3C Client for [OpenWRT](openwrt.org)
+A CLI H3C Client for [OpenWRT](http://openwrt.org)
 
 ## Compilation
 
 * First we need the OpenWRT-Toolchain
 
-Enter the package [site](downloads.openwrt.org/snapshots/trunk/) and choose the right architecture. And then you will see the **Toolchain** package at the front of the list.
+Enter the package [site](http://downloads.openwrt.org/snapshots/trunk/) and choose the right architecture. And then you will see the **Toolchain** package at the front of the list.
 
 or you can download it directly from the URL below. Just replace the `[arch]` to a valid architecture name. `ar71xx` for example.
 
