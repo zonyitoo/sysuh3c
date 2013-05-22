@@ -70,9 +70,14 @@ endef
 #    exit 0
 #endef
 
-#Package/$(PKG_NAME)/prerm
-#[删除前执行的脚本 记得加上#!/bin/sh 没有就空着]
-#endef
+Package/$(PKG_NAME)/prerm
+		#!/bin/sh
+		if [ -f "/tmp/clih3c.lock" ]; then
+			cat /tmp/clih3c.lock | read CLIH3C_LOCK
+			kill -int $CLIH3C_LOCK
+			rm -f /tmp/clih3c.lock
+		fi
+endef
 
 #Package/$(PKG_NAME)/postrm
 #[删除后执行的脚本 记得加上#!/bin/sh 没有就空着]
