@@ -4,6 +4,8 @@ A CLI H3C Client for [OpenWRT](http://openwrt.org)
 
 ## Compilation
 
+### Compile with OpenWRT-Toolchain
+
 * First we need the OpenWRT-Toolchain
 
 Enter the package [site](http://downloads.openwrt.org/snapshots/trunk/) and choose the right architecture. And then you will see the **Toolchain** package at the front of the list.
@@ -31,10 +33,23 @@ export STAGING_DIR=/path/to/your/toolchain
 * After that. You can run make to compile the source.
 
 ```
-make
+make CXX=mips-openwrt-linux-g++
 ```
 
 * Then you will get the executable file `clih3c`. Just upload it to your router and run it.
+
+### Compile with OpenWRT-SDK
+
+* First you should get the **OpenWRT-SDK**. See [here](http://wiki.openwrt.org/zh-cn/doc/howto/obtain.firmware.sdk) for more detail.
+
+* Then `cd` into the SDK directory
+
+```bash
+git clone git@github.com:zonyitoo/clih3c.git -b openwrt package/
+make
+```
+
+* You will get the `clih3c_0.1-1_ar71xx.ipk` in `bin/ar71xx/package`
 
 ## Usage
 
