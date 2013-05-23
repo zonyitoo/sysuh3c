@@ -26,6 +26,9 @@
 #include <net/if.h>
 #include "eapdef.h"
 #include "eapauth.h"
+#include "eaputils.h"
+#include <stdio.h>
+#include <stdarg.h>
 
 int send_start(const eapauth_t *user);
 int send_logoff(const eapauth_t *user);
@@ -35,8 +38,19 @@ int send_response_md5(const eapauth_t *user, uint8_t packet_id, const uint8_t *m
 
 int eap_handler(const eapauth_t *user, const uint8_t *buf, size_t len);
 
-static void (*status_notify)(int);
-static void (*display_promote)(const char *, ...);
+void status_notify_func(int statno) {
+    printf("%s\n", strstat(statno));
+}
+
+void display_promote_func(const char *format, ...) {
+    va_list arglist;
+    va_start(arglist, format);
+    printf(format, arglist);
+    va_end(arglist);
+}
+
+static void (*status_notify)(int) = status_notify_func;
+static void (*display_promote)(const char *, ...) = display_promote_func;
 
 void eapauth_init(eapauth_t *user, const char *iface) {
     uint8_t mac_addr_buf[6] = {0};

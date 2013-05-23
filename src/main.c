@@ -26,9 +26,11 @@
 #include <unistd.h>
 #include <sys/stat.h>
 #include <string.h>
+#include "eaputils.h"
 
 int lockfd = -1;
-static const char *lockfname = "clih3c.lock";
+static const char *lockfname = "/tmp/clih3c.lock";
+static const char *logfile = "/tmp/clih3c.log";
 
 static void interrupt_handler(int signo) {
     if (lockf(lockfd, F_ULOCK, 0) < 0) exit(EXIT_FAILURE);
@@ -45,12 +47,12 @@ void daemonize() {
 
     setsid();
 
-    freopen("/dev/null", "r", stdin);
-    freopen("/dev/null", "w", stdout);
-    freopen("/dev/null", "w", stderr);
+    freopen(logfile, "r", stdin);
+    freopen(logfile, "w", stdout);
+    freopen(logfile, "w", stderr);
 
     umask(027);
-    chdir("/tmp");
+    chdir("/");
 
     lockfd = open(lockfname, O_RDWR | O_CREAT, 0640);
     if (lockfd < 0) exit(EXIT_FAILURE);
@@ -72,7 +74,8 @@ int autoretry_count = 5;
 _Bool toDaemon = 0;
 
 static void status_callback(int statno) {
-    printf("%s\n", strstat(statno));
+    if (statno != EAPAUTH_EAP_RESPONSE)
+        printf("%s\n", strstat(statno));
     switch (statno) {
         case EAPAUTH_EAP_SUCCESS:
             haslogin = 1;

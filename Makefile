@@ -70,11 +70,10 @@ endef
 #    exit 0
 #endef
 
-Package/$(PKG_NAME)/prerm
+define Package/$(PKG_NAME)/prerm
 		#!/bin/sh
-		if [ -f "/tmp/clih3c.lock" ]; then
-			cat /tmp/clih3c.lock | read CLIH3C_LOCK
-			kill -int $CLIH3C_LOCK
+		if [ -f /tmp/clih3c.lock ]; then
+			cat /tmp/clih3c.lock | while read CLIH3C_LOCK; do kill -int $CLIH3C_LOCK; done
 			rm -f /tmp/clih3c.lock
 		fi
 endef
