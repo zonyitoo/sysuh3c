@@ -2,46 +2,29 @@
 
 #include "eapdef.h"
 #include <netpacket/packet.h>
-#include <iostream>
-#include <stdexcept>
+#include <sys/socket.h>
+#include <net/if.h>
 
-class EAPAuth {
-    public:
-        EAPAuth(const std::string&, const std::string&, const std::string&);
-        ~EAPAuth();
+#ifdef __cplusplus
+extern "C" {
+#endif
 
-        void auth() const;
-        void logoff();
-        void redirect_promote(void (*)(const std::string&));
-        void set_status_changed_listener(void (*)(int statno));
+typedef struct __eapauth_t {
+    char name[17];
+    char password[17];
+    int client_fd;
+    _Bool has_sent_logoff;
+    uint8_t ethernet_header[14];
+    struct sockaddr_ll addr;
+} eapauth_t;
 
-        std::string get_user_name() const;
+void eapauth_init(eapauth_t *user, const char *iface);
+int eapauth_auth(eapauth_t *user);
+int eapauth_logoff(eapauth_t *user);
 
-    private:
-        void send_start() const;
-        void send_logoff() const;
-        void send_response_id(uint8_t packet_id) const;
-        void send_response_md5(uint8_t packet_id, const std::string& md5data) const;
-        void send_response_h3c(uint8_t packet_id) const;
+void eapauth_redirect_promote(void (*)(const char *, ...));
+void eapauth_set_status_listener(void (*)(int));
 
-        bool eap_handler(const std::string& eap_packet) const;
-
-        std::string mac_addr;
-        int client_fd;
-        bool has_sent_logoff;
-        std::string ethernet_header;
-
-        std::string iface;
-        std::string user_name;
-        std::string user_password;
-
-        struct sockaddr_ll sock_addr;
-
-        void (*display_promote)(const std::string&);
-        void (*status_notify)(int statno);
-};
-
-class EAPAuthException : public std::runtime_error {
-    public: 
-        explicit EAPAuthException(const std::string&);
-};
+#ifdef __cplusplus
+}
+#endif

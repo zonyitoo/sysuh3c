@@ -1,16 +1,31 @@
+/*
+ * =====================================================================================
+ *
+ *       Filename:  main.c
+ *
+ *    Description:  clih3c main
+ *
+ *        Version:  1.0
+ *        Created:  2013年05月24日 02时49分52秒
+ *       Revision:  none
+ *       Compiler:  gcc
+ *
+ *         Author:  Tyler Chung
+ *   Organization:  SYSU
+ *
+ * =====================================================================================
+ */
+#include <stdlib.h>
 #include "eapauth.h"
 #include <unistd.h>
-#include <cstdlib>
-#include <cstdio>
-#include <string>
+#include <stdlib.h>
+#include <stdio.h>
 #include <getopt.h>
-#include <iostream>
 #include <signal.h>
 #include <fcntl.h>
 #include <unistd.h>
 #include <sys/stat.h>
-#include <cstring>
-using namespace std;
+#include <string.h>
 
 int lockfd = -1;
 static const char *lockfname = "clih3c.lock";
@@ -18,7 +33,7 @@ static const char *lockfname = "clih3c.lock";
 static void interrupt_handler(int signo) {
     if (lockf(lockfd, F_ULOCK, 0) < 0) exit(EXIT_FAILURE);
     remove(lockfname);
-    exit(EXIT_FAILURE);
+    exit(EXIT_SUCCESS);
 }
 
 void daemonize() {
@@ -52,43 +67,46 @@ void daemonize() {
     signal(SIGINT, interrupt_handler);
 }
 
-bool haslogin = false;
+_Bool haslogin = 0;
 int autoretry_count = 5;
-string name, password, iface("eth0");
-bool toDaemon = false;
+_Bool toDaemon = 0;
 
 static void status_callback(int statno) {
-    cout << strstat(statno) << endl;
+    printf("%s\n", strstat(statno));
     switch (statno) {
         case EAPAUTH_EAP_SUCCESS:
-            haslogin = true;
+            haslogin = 1;
             autoretry_count = 5;
             if (toDaemon)
                 daemonize();
             break;
         case EAPAUTH_EAP_FAILURE:
-            haslogin = false;
+            haslogin = 0;
             break;
     }
 }
 
-static void promote_callback(const string& msg) {
-    string cpmsg(msg);
-    cpmsg.erase(0, cpmsg.find_first_not_of("\t\n\r"));
-    cpmsg.erase(cpmsg.find_last_not_of("\t\n\r") + 1);
-    if (!cpmsg.empty())
-        cout << cpmsg << endl; 
-}
+static struct option arglist[] = {
+        {"help", no_argument, NULL, 'h'},
+        {"user", required_argument, NULL, 'u'},
+        {"password", required_argument, NULL, 'p'},
+        {"iface", optional_argument, NULL, 'i'},
+        {"daemonize", no_argument, NULL, 'd'},
+        {NULL, 0, NULL, 0}
+    };
 
-int main(int argc, char **argv) {
-
-    if (argc < 3) {
-        printf("Usage: clih3c [arg]\n"
+static const char usage_str[] = "Usage: clih3c [arg]\n"
                 "   -h --help       print this screen\n"
                 "   -u --user       user account\n"
                 "   -p --password   password\n"
                 "   -i --iface      network interface (default eth0)\n"
-                "   -d --daemonize  daemonize\n");
+                "   -d --daemonize  daemonize\n";
+
+
+int main(int argc, char **argv) {
+
+    if (argc < 3) {
+        printf(usage_str);
         exit(EXIT_FAILURE);
     }
 
@@ -97,37 +115,27 @@ int main(int argc, char **argv) {
         exit(EXIT_FAILURE);
     }
     
-    struct option arglist[] = {
-        {"help", no_argument, NULL, 'h'},
-        {"user", required_argument, NULL, 'u'},
-        {"password", required_argument, NULL, 'p'},
-        {"iface", optional_argument, NULL, 'i'},
-        {"daemonize", no_argument, NULL, 'd'},
-        {NULL, 0, NULL, 0}
-    };
-    
-        char argval;
+    eapauth_t eapauth;
+
+    char iface[] = "eth0";
+
+    char argval;
     while ((argval = getopt_long(argc, argv, "u:p:i:d", arglist, NULL)) != -1) {
         switch (argval) {
             case 'h':
-                printf("Usage: clih3c [arg]\n"
-                        "   -h --help       print this screen\n"
-                        "   -u --user       user account\n"
-                        "   -p --password   password\n"
-                        "   -i --iface      network interface (default eth0)\n"
-                        "   -d --daemonize  daemonize\n");
+                printf(usage_str);
                 exit(EXIT_SUCCESS);
             case 'u':
-                name = optarg;
+                strcpy(eapauth.name, optarg);
                 break;
             case 'p':
-                password = optarg;
+                strcpy(eapauth.password, optarg);
                 break;
             case 'i':
-                iface = optarg;
+                strcpy(iface, optarg);
                 break;
             case 'd':
-                toDaemon = true;
+                toDaemon = 1;
                 break;
             default:
                 printf("Argument Error. Unknown option.\n");
@@ -135,16 +143,14 @@ int main(int argc, char **argv) {
         }
     }
 
-    if (name.empty() || password.empty() || iface.empty()) {
+    if (strlen(eapauth.name) == 0 || strlen(eapauth.password) == 0 || strlen(iface) == 0) {
         fprintf(stderr, "Argument Error. You should provide valid name and password.");
         return -1;
     }
     
-    EAPAuth authservice(name, password, iface);
+    eapauth_init(&eapauth, iface);
 
-    authservice.redirect_promote(promote_callback);
-    
-    authservice.set_status_changed_listener(status_callback);
+    eapauth_set_status_listener(status_callback);
 
     FILE *fp = fopen(lockfname, "r");
     if (fp != NULL) {
@@ -154,15 +160,9 @@ int main(int argc, char **argv) {
         fclose(fp);
     }
 
-    //daemonize();
-
     while (autoretry_count --) {
-        try {
-            authservice.auth();
-            if (!haslogin) break;
-        }
-        catch (const EAPAuthException& expt) {
-            cout << expt.what() << endl;
+        if (eapauth_auth(&eapauth) != 0) {
+            fprintf(stderr, "eapauth_auth error");
         }
         if (!haslogin) break;
         sleep(2);

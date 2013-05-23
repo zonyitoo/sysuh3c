@@ -1,16 +1,17 @@
-#CXXFLAGS= -Wall -Os -Ofast
+#CFLAGS= -Wall -Os -Ofast
 #LDFLAGS= -Os -Ofast
 
-#CXX=mips-openwrt-linux-g++
+clih3c: main.o eapauth.o eaputils.o
+	$(CC) $(LDFLAGS) $^ -o $@
 
-clih3c: main.o eapauth.o
-	$(CXX) $(LDFLAGS) $^ -o $@
+main.o: main.c eapauth.h eapdef.h
+	$(CC) $(CFLAGS) -c -o $@ $<
 
-main.o: main.cpp eapauth.h eapdef.h
-	$(CXX) $(CXXFLAGS) -c -o $@ $<
+eapauth.o: eapauth.c eapauth.h eapdef.h
+	$(CC) $(CFLAGS) -c -o $@ $<
 
-eapauth.o: eapauth.cpp eapauth.h eapdef.h
-	$(CXX) $(CXXFLAGS) -c -o $@ $<
+eaputils.o: eaputils.c eaputils.h eapdef.h
+	$(CC) $(CFLAGS) -c -o $@ $<
 
 clean:
 	rm -f *.o clih3c
