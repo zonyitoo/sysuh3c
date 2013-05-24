@@ -126,8 +126,7 @@ int eapauth_auth(const eapauth_t *user) {
 
         ret = eap_handler(user, buf + sizeof(user->ethernet_header), 
                     ret - sizeof(user->ethernet_header));
-        if (ret != 0) return EAPAUTH_ERR;
-        else if (ret == 1) break;
+        if (ret == EAPAUTH_ERR || ret == EAPAUTH_FAIL) return ret;
     }
     return EAPAUTH_OK;
 }
@@ -257,9 +256,9 @@ int eap_handler(const eapauth_t *user, const uint8_t *eap_packet, size_t len) {
     
     if (eapol_packet.type != EAPOL_EAPPACKET) {
         status_notify(EAPAUTH_UNKNOWN_PACKET_TYPE);
-        display_promote(LOG_ERR, "got unknown packet type: %x",
+        display_promote(LOG_ERR, "got unknown packet type: %hu",
                 __func__, __LINE__, eapol_packet.type);
-        return EAPAUTH_ERR;
+        return EAPAUTH_UNKNOWN;
     }
 
     eapol_packet.eap.code = eap_packet[4];
@@ -286,7 +285,6 @@ int eap_handler(const eapauth_t *user, const uint8_t *eap_packet, size_t len) {
                 setsockopt(user->client_fd, SOL_SOCKET, SO_RCVTIMEO, (char *) &timeout, sizeof(timeout));
             }
             return EAPAUTH_FAIL;
-            break;
         case EAP_RESPONSE:
             status_notify(EAPAUTH_EAP_RESPONSE);
             break;

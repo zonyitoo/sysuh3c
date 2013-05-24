@@ -20,7 +20,8 @@ typedef struct __eapauth_t {
 enum __eapauth_ret {
     EAPAUTH_OK = 0,
     EAPAUTH_ERR,
-    EAPAUTH_FAIL
+    EAPAUTH_FAIL,
+    EAPAUTH_UNKNOWN
 };
 
 int eapauth_init(eapauth_t *user, const char *iface);
