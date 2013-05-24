@@ -26,30 +26,35 @@
 #include <unistd.h>
 #include <sys/stat.h>
 #include <string.h>
+#include <syslog.h>
 #include "eaputils.h"
+#include <stdarg.h>
 
-int lockfd = -1;
 static const char *lockfname = "/tmp/clih3c.lock";
-static const char *logfile = "/tmp/clih3c.log";
+int autoretry_count = 5;
+_Bool toDaemon = 0;
+_Bool isDaemon = 0;
 
-static void interrupt_handler(int signo) {
-    if (lockf(lockfd, F_ULOCK, 0) < 0) exit(EXIT_FAILURE);
+static void signal_handler(int signo) {
     remove(lockfname);
+    if (isDaemon)
+        closelog();
     exit(EXIT_SUCCESS);
 }
 
 void daemonize() {
-    if (getpid() == 1) return;
+    int lockfd = -1;
+    if (isDaemon) return;
+
     pid_t pid = fork();
     if (pid < 0) exit(EXIT_FAILURE);
-    
-    if (pid > 0) exit(EXIT_SUCCESS);
+    else if (pid > 0) exit(EXIT_SUCCESS);
 
     setsid();
 
-    freopen(logfile, "r", stdin);
-    freopen(logfile, "w", stdout);
-    freopen(logfile, "w", stderr);
+    close(fileno(stdin));
+    close(fileno(stdout));
+    close(fileno(stderr));
 
     umask(027);
     chdir("/");
@@ -62,31 +67,46 @@ void daemonize() {
     sprintf(pidstr, "%d\n", getpid());
     write(lockfd, pidstr, strlen(pidstr));
 
+    openlog("clih3c", LOG_CONS, LOG_USER);
+
     signal(SIGCHLD, SIG_IGN);
     signal(SIGTSTP, SIG_IGN);
     signal(SIGTTOU, SIG_IGN);
     signal(SIGTTIN, SIG_IGN);
-    signal(SIGINT, interrupt_handler);
+    signal(SIGINT, signal_handler);
+    signal(SIGTERM, signal_handler);
+
+    isDaemon = 1;
 }
 
-_Bool haslogin = 0;
-int autoretry_count = 5;
-_Bool toDaemon = 0;
-
 static void status_callback(int statno) {
-    if (statno != EAPAUTH_EAP_RESPONSE)
-        printf("%s\n", strstat(statno));
+    if (statno != EAPAUTH_EAP_RESPONSE) {
+        if (isDaemon)
+            syslog(LOG_INFO, "%s", strstat(statno));
+        else
+            printf("%s\n", strstat(statno));
+    }
     switch (statno) {
         case EAPAUTH_EAP_SUCCESS:
-            haslogin = 1;
             autoretry_count = 5;
             if (toDaemon)
                 daemonize();
             break;
         case EAPAUTH_EAP_FAILURE:
-            haslogin = 0;
             break;
     }
+}
+
+static void display_msg(int priority, const char *format, ...) {
+    va_list arg;
+    va_start(arg, format);
+    if (isDaemon)
+        syslog(priority, format, arg);
+    else {
+        fprintf(stderr, format, arg);
+        fprintf(stderr, "\n");
+    }
+    va_end(arg);
 }
 
 static struct option arglist[] = {
@@ -108,6 +128,11 @@ static const char usage_str[] = "Usage: clih3c [arg]\n"
 
 int main(int argc, char **argv) {
 
+    int ret;
+    char iface[6] = "eth0";
+    char argval;
+    FILE *fp = NULL;
+
     if (argc < 3) {
         printf(usage_str);
         exit(EXIT_FAILURE);
@@ -120,9 +145,6 @@ int main(int argc, char **argv) {
     
     eapauth_t eapauth;
 
-    char iface[] = "eth0";
-
-    char argval;
     while ((argval = getopt_long(argc, argv, "u:p:i:d", arglist, NULL)) != -1) {
         switch (argval) {
             case 'h':
@@ -148,14 +170,16 @@ int main(int argc, char **argv) {
 
     if (strlen(eapauth.name) == 0 || strlen(eapauth.password) == 0 || strlen(iface) == 0) {
         fprintf(stderr, "Argument Error. You should provide valid name and password.");
-        return -1;
+        exit(EXIT_FAILURE);
     }
     
-    eapauth_init(&eapauth, iface);
+    if (eapauth_init(&eapauth, iface) != 0)
+        exit(EXIT_FAILURE);
 
     eapauth_set_status_listener(status_callback);
+    eapauth_redirect_promote(display_msg);
 
-    FILE *fp = fopen(lockfname, "r");
+    fp = fopen(lockfname, "r");
     if (fp != NULL) {
         pid_t pid;
         fscanf(fp, "%d", &pid);
@@ -164,11 +188,15 @@ int main(int argc, char **argv) {
     }
 
     while (autoretry_count --) {
-        if (eapauth_auth(&eapauth) != 0) {
-            fprintf(stderr, "eapauth_auth error");
-        }
-        if (!haslogin) break;
+        ret = eapauth_auth(&eapauth);
+        if (ret == EAPAUTH_ERR) 
+            display_msg(LOG_ERR, "eapauth_auth error : %d", ret);
+        else if (ret == EAPAUTH_FAIL)
+            break;
         sleep(2);
     }
+
+    if (isDaemon)
+        closelog();
     return 0;
 }
