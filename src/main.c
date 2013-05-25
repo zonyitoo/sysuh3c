@@ -187,11 +187,6 @@ int main(int argc, char **argv) {
     }
 
 
-    if (strlen(iface) == 0) {
-        display_msg(LOG_ERR, "Argument Error. You should provide an interface.");
-        exit(EXIT_FAILURE);
-    }
-
     if (eapauth_init(&eapauth, iface) != 0)
         exit(EXIT_FAILURE);
 
@@ -202,11 +197,6 @@ int main(int argc, char **argv) {
         }
         display_msg(LOG_INFO, "Logoff Succeed");
         exit(EXIT_SUCCESS);
-    }
-
-    if (strlen(eapauth.name) == 0 || strlen(eapauth.password) == 0) {
-        display_msg(LOG_ERR, "Argument Error. You should provide valid name and password");
-        exit(EXIT_FAILURE);
     }
 
     eapauth_set_status_listener(status_callback);
