@@ -11,7 +11,7 @@ include $(INCLUDE_DIR)/package.mk
 define Package/$(PKG_NAME)
         SECTION:=utils
         CATEGORY:=Utilities
-        #DEPENDS:=+libuClibc
+        DEPENDS:=+libc +libgcc
         TITLE:=clih3c
         PKGARCH:=ar71xx
         MAINTAINER:=zonyitoo

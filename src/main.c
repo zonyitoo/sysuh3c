@@ -103,6 +103,7 @@ static void display_msg(int priority, const char *format, ...) {
     if (isDaemon)
         syslog(priority, format, arg);
     else {
+        if (priority == LOG_ERR) fprintf(stderr, "ERR: ");
         fprintf(stderr, format, arg);
         fprintf(stderr, "\n");
     }
@@ -115,6 +116,7 @@ static struct option arglist[] = {
         {"password", required_argument, NULL, 'p'},
         {"iface", optional_argument, NULL, 'i'},
         {"daemonize", no_argument, NULL, 'd'},
+        {"logoff", no_argument, NULL, 'l'},
         {NULL, 0, NULL, 0}
     };
 
@@ -123,37 +125,43 @@ static const char usage_str[] = "Usage: clih3c [arg]\n"
                 "   -u --user       user account\n"
                 "   -p --password   password\n"
                 "   -i --iface      network interface (default eth0)\n"
-                "   -d --daemonize  daemonize\n";
+                "   -d --daemonize  daemonize\n"
+                "   -l --logoff     logoff\n";
 
 
 int main(int argc, char **argv) {
 
     int ret;
-    char iface[6] = "eth0";
+    char iface[8] = "eth0";
     char argval;
     FILE *fp = NULL;
 
-    if (argc < 3) {
-        printf(usage_str);
-        exit(EXIT_FAILURE);
-    }
+    _Bool toLogoff = 0;
 
     if (geteuid() != 0) {
-        printf("You have to run the program as root\n");
+        display_msg(LOG_ERR, "You have to run the program as root\n");
         exit(EXIT_FAILURE);
     }
     
     eapauth_t eapauth;
 
-    while ((argval = getopt_long(argc, argv, "u:p:i:d", arglist, NULL)) != -1) {
+    while ((argval = getopt_long(argc, argv, "u:p:i:dlh", arglist, NULL)) != -1) {
         switch (argval) {
             case 'h':
                 printf(usage_str);
                 exit(EXIT_SUCCESS);
             case 'u':
+                if (strlen(optarg) > 16) {
+                    display_msg(LOG_ERR, "name is too long");
+                    exit(EXIT_FAILURE);
+                }
                 strcpy(eapauth.name, optarg);
                 break;
             case 'p':
+                if (strlen(optarg) > 16) {
+                    display_msg(LOG_ERR, "password is too long");
+                    exit(EXIT_FAILURE);
+                }
                 strcpy(eapauth.password, optarg);
                 break;
             case 'i':
@@ -162,22 +170,13 @@ int main(int argc, char **argv) {
             case 'd':
                 toDaemon = 1;
                 break;
+            case 'l':
+                toLogoff = 1;
+                break;
             default:
-                printf("Argument Error. Unknown option.\n");
                 exit(EXIT_FAILURE);
         }
     }
-
-    if (strlen(eapauth.name) == 0 || strlen(eapauth.password) == 0 || strlen(iface) == 0) {
-        fprintf(stderr, "Argument Error. You should provide valid name and password.");
-        exit(EXIT_FAILURE);
-    }
-    
-    if (eapauth_init(&eapauth, iface) != 0)
-        exit(EXIT_FAILURE);
-
-    eapauth_set_status_listener(status_callback);
-    eapauth_redirect_promote(display_msg);
 
     fp = fopen(lockfname, "r");
     if (fp != NULL) {
@@ -186,6 +185,32 @@ int main(int argc, char **argv) {
         kill(pid, SIGINT);
         fclose(fp);
     }
+
+
+    if (strlen(iface) == 0) {
+        display_msg(LOG_ERR, "Argument Error. You should provide an interface.");
+        exit(EXIT_FAILURE);
+    }
+
+    if (eapauth_init(&eapauth, iface) != 0)
+        exit(EXIT_FAILURE);
+
+    if (toLogoff) {
+        if (eapauth_logoff(&eapauth) != 0) {
+            display_msg(LOG_ERR, "eapauth_logoff error");
+            exit(EXIT_FAILURE);
+        }
+        display_msg(LOG_INFO, "Logoff Succeed");
+        exit(EXIT_SUCCESS);
+    }
+
+    if (strlen(eapauth.name) == 0 || strlen(eapauth.password) == 0) {
+        display_msg(LOG_ERR, "Argument Error. You should provide valid name and password");
+        exit(EXIT_FAILURE);
+    }
+
+    eapauth_set_status_listener(status_callback);
+    eapauth_redirect_promote(display_msg);
 
     while (autoretry_count --) {
         ret = eapauth_auth(&eapauth);
