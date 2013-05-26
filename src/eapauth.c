@@ -65,6 +65,10 @@ int eapauth_init(eapauth_t *user, const char *iface) {
         return EAPAUTH_ERR;
     }
 
+    timeout.tv_sec = 5;
+    timeout.tv_usec = 0;
+    setsockopt(user->client_fd, SOL_SOCKET, SO_RCVTIMEO, (char *) &timeout, sizeof(timeout));
+
     memset(&ifr, 0, sizeof(ifr));
     strncpy(ifr.ifr_name, iface, sizeof(ifr.ifr_name));
 
@@ -264,10 +268,22 @@ int eap_handler(const eapauth_t *user, const uint8_t *eap_packet, size_t len) {
 
     switch (eapol_packet.eap.code) {
         case EAP_SUCCESS:
-            status_notify(EAPAUTH_EAP_SUCCESS);
+            {
+                struct timeval timeout;
+                status_notify(EAPAUTH_EAP_SUCCESS);
+                timeout.tv_sec = 30;
+                timeout.tv_usec = 0;
+                setsockopt(user->client_fd, SOL_SOCKET, SO_RCVTIMEO, (char *) &timeout, sizeof(timeout));
+            }
             break;
         case EAP_FAILURE:
-            status_notify(EAPAUTH_EAP_FAILURE);
+            {
+                struct timeval timeout;
+                status_notify(EAPAUTH_EAP_FAILURE);
+                timeout.tv_sec = 5;
+                timeout.tv_usec = 0;
+                setsockopt(user->client_fd, SOL_SOCKET, SO_RCVTIMEO, (char *) &timeout, sizeof(timeout));
+            }
             return EAPAUTH_FAIL;
         case EAP_RESPONSE:
             status_notify(EAPAUTH_EAP_RESPONSE);
