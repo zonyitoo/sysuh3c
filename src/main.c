@@ -207,7 +207,7 @@ int main(int argc, char **argv) {
         if (ret == EAPAUTH_ERR) 
             display_msg(LOG_ERR, "eapauth_auth error : %d", ret);
         else if (ret == EAPAUTH_FAIL)
-            break;
+            exit(EXIT_FAILURE);
         sleep(2);
     }
 
