@@ -13,7 +13,7 @@ define Package/$(PKG_NAME)
         CATEGORY:=Utilities
         DEPENDS:=+libc +libgcc
         TITLE:=clih3c
-        PKGARCH:=ar71xx
+        PKGARCH:=all
         MAINTAINER:=zonyitoo
 endef
 
