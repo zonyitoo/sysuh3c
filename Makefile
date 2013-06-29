@@ -1,6 +1,6 @@
 include $(TOPDIR)/rules.mk
 
-PKG_NAME:=clih3c
+PKG_NAME:=sysuh3c
 PKG_VERSION:=0.1
 PKG_RELEASE:=1
 
@@ -12,8 +12,8 @@ define Package/$(PKG_NAME)
         SECTION:=utils
         CATEGORY:=Utilities
         DEPENDS:=+libc +libgcc
-        TITLE:=clih3c
-        PKGARCH:=all
+        TITLE:=sysuh3c
+        PKGARCH:=ar71xx
         MAINTAINER:=zonyitoo
 endef
 
@@ -48,7 +48,7 @@ endef
 
 define Package/$(PKG_NAME)/install
 		$(INSTALL_DIR) $(1)/usr/bin
-		$(INSTALL_BIN) $(PKG_BUILD_DIR)/clih3c $(1)/usr/bin
+		$(INSTALL_BIN) $(PKG_BUILD_DIR)/sysuh3c $(1)/usr/bin
 endef
 
 #define Package/$(PKG_NAME)/preinst
@@ -72,9 +72,9 @@ endef
 
 define Package/$(PKG_NAME)/prerm
 		#!/bin/sh
-		if [ -f /tmp/clih3c.lock ]; then
-			cat /tmp/clih3c.lock | while read CLIH3C_LOCK; do kill -int $CLIH3C_LOCK; done
-			rm -f /tmp/clih3c.lock
+		if [ -f /tmp/sysuh3c.lock ]; then
+			cat /tmp/sysuh3c.lock | while read SYSUH3C_LOCK; do kill -int $SYSUH3C_LOCK; done
+			rm -f /tmp/sysuh3c.lock
 		fi
 endef
 

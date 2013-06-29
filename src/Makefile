@@ -1,7 +1,7 @@
 #CFLAGS= -Wall -Os -Ofast
 #LDFLAGS= -Os -Ofast
 
-clih3c: main.o eapauth.o eaputils.o
+sysuh3c: main.o eapauth.o eaputils.o
 	$(CC) $(LDFLAGS) $^ -o $@
 
 main.o: main.c eapauth.h eapdef.h
