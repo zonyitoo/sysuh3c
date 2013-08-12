@@ -1,4 +1,4 @@
-CXXFLAG = -c -std=c++11 -Wall -O2 -g
+CXXFLAG = -c -std=c++11 -Wall -O2
 
 all: sysuh3c
 
