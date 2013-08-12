@@ -1,8 +1,8 @@
-CXXFLAG = -c -std=c++11 -Wall -O2
+CXXFLAG = -c -std=c++11 -Wall -O2 -g
 
-all: clih3c
+all: sysuh3c
 
-clih3c: eapauth.o main.o
+sysuh3c: eapauth.o main.o
 	$(CXX) $^ -o $@
 
 eapauth.o: eapauth.cpp eapauth.h eapdef.h

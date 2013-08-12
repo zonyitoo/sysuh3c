@@ -5,6 +5,8 @@
 #include <functional>
 #include <iostream>
 #include <stdexcept>
+#include <vector>
+#include <array>
 
 class EAPAuth {
     public:
@@ -22,15 +24,14 @@ class EAPAuth {
         void send_start() const;
         void send_logoff() const;
         void send_response_id(uint8_t packet_id) const;
-        void send_response_md5(uint8_t packet_id, const std::string& md5data) const;
+        void send_response_md5(uint8_t packet_id, const std::vector<uint8_t>& md5data) const;
         void send_response_h3c(uint8_t packet_id) const;
 
-        bool eap_handler(const std::string& eap_packet) const;
+        bool eap_handler(const std::vector<uint8_t>& eap_packet) const;
 
-        std::string mac_addr;
         int client_fd;
         bool has_sent_logoff;
-        std::string ethernet_header;
+        std::vector<uint8_t> ethernet_header;
 
         std::string iface;
         std::string user_name;

@@ -4,13 +4,21 @@
 #include <arpa/inet.h>
 #include <utility>
 #include <string>
+#include <array>
+#include <vector>
 
 // Constants 
 // References : http://tools.ietf.org/html/rfc3748
 static const uint32_t ETHERTYPE_PAE = 0x888e;
-static const char PAE_GROUP_ADDR[] = "\x01\x80\xc2\x00\x00\x03";
-static const char BROADCAST_ADDR[] = "\xff\xff\xff\xff\xff\xff";
-static const char VERSION_INFO[] = "\x06\x07\x62jQ7SE8BZ3MqHhs3clMregcDY3Y=\x20\x20";
+
+typedef std::array<uint8_t, 6> mac_addr_t;
+static const mac_addr_t PAE_GROUP_ADDR = {{0x01, 0x80, 0xc2, 0x00, 0x00, 0x03}};
+static const mac_addr_t BROADCAST_ADDR = {{0xff, 0xff, 0xff, 0xff, 0xff, 0xff}};
+static const std::array<uint8_t, 32> VERSION_INFO = 
+                                        {{0x06, 0x07, 'b', 'j', 'Q', '7', 'S', 'E', '8', 'B',
+                                        'Z', '3', 'M', 'q', 'H', 'h', 's', '3', 'c', 'l', 
+                                        'M', 'r', 'e', 'g', 'c', 'D', 'Y', '3', 'Y', '=',
+                                        0x20, 0x20}};
 
 static const uint8_t EAPOL_VERSION = 1;
 static const uint8_t EAPOL_EAPPACKET = 0;
@@ -45,7 +53,7 @@ struct eap_t {
     uint16_t eap_len;
     uint8_t reqtype;
     uint8_t datalen;
-    std::string data;
+    std::vector<uint8_t> data;
 };
 
 struct eapol_t {
@@ -55,44 +63,50 @@ struct eapol_t {
     eap_t eap;
 };
 
-#include <string>
-inline std::string get_EAPOL(uint8_t type, const std::string& payload = std::string()) {
-    std::string result;
-    result.append((char *)(&EAPOL_VERSION), sizeof(EAPOL_VERSION));
-    result.append((char *)(&type), sizeof(type));
+template <typename T>
+inline void Append(std::vector<uint8_t>& vec, const T data) {
+    uint8_t * pnt = (uint8_t *)(&data);
+    for (size_t i = 0; i < sizeof(data); ++ i)
+        vec.push_back(*(pnt ++));
+}
+
+inline void get_EAPOL(std::vector<uint8_t>& result, uint8_t type, const std::vector<uint8_t>& payload = std::vector<uint8_t>()) {
+    result.push_back(EAPOL_VERSION);
+    Append(result, type);
     uint16_t len = static_cast<uint16_t>(payload.size());
     len = htons(len);
-    result.append((char *)(&len), sizeof(len));
-    result.append(payload);
-    return std::move(result);
+    Append(result, len);
+    result.insert(result.end(), payload.begin(), payload.end());
 }
 
-inline std::string get_EAP(uint8_t code, uint8_t id, uint8_t type, 
-        const std::string& data = std::string()) {
-    std::string result;
+inline std::vector<uint8_t> get_EAP(uint8_t code, uint8_t id, uint8_t type,  
+        const std::vector<uint8_t>& data = std::vector<uint8_t>()) {
+    std::vector<uint8_t> result;
     uint16_t n = 4;
-    result.append((char *)(&code), sizeof(code));
-    result.append((char *)(&id), sizeof(id));
+    Append(result, code);
+    Append(result, id);
     if (code == EAP_SUCCESS || code == EAP_FAILURE) {
         n = htons(n);
-        result.append((char *)(&n), sizeof(n));
+        Append(result, n);
     }
     else {
-        n = 5 + data.length();
+        n = 5 + data.size();
         n = htons(n);
-        result.append((char *)(&n), sizeof(n));
-        result.append((char *)(&type), sizeof(type));
-        result.append(data);
+        Append(result, n);
+        Append(result, type);
+        result.insert(result.end(), data.begin(), data.end());
     }
     return std::move(result);
 }
 
-inline std::string get_ethernet_header(const std::string& src, const std::string& dst, 
-        uint16_t type) {
+inline std::vector<uint8_t> get_ethernet_header(const mac_addr_t& src, const mac_addr_t& dst, uint16_t type) {
     type = htons(type);
-    std::string result(dst);
-    result.append(src);
-    result.append((char *)(&type), sizeof(type));
+    std::vector<uint8_t> result;
+    result.assign(dst.begin(), dst.end());
+    result.insert(result.end(), src.begin(), src.end());
+    uint8_t *pnt = (uint8_t *)(&type);
+    result.push_back(*pnt);
+    result.push_back(*(pnt + 1));
     return std::move(result);
 }
 

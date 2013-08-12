@@ -1,6 +1,6 @@
-# CLI H3C Client
+# SYSU H3C Client
 
-A CLI H3C Client in \*NIX
+A SYSU H3C Client in \*NIX
 
 ## Usage
 
@@ -10,7 +10,7 @@ Just run make under the root directory of project.
 make
 ```
 
-Then you get `clih3c` executable file.
+Then you get `sysuh3c` executable file.
 
 ```bash
 -h --help        print help screen

@@ -55,7 +55,7 @@ void daemonize() {
 int main(int argc, char **argv) {
 
     if (argc < 3) {
-        printf("Usage: clih3c [arg]\n"
+        printf("Usage: sysuh3c [arg]\n"
                 "   -h --help       print this screen\n"
                 "   -u --user       user account\n"
                 "   -p --password   password\n"
