@@ -3,14 +3,14 @@
  *
  *       Filename:  main.c
  *
- *    Description:  clih3c main
+ *    Description:  sysuh3c main
  *
  *        Version:  1.0
  *        Created:  2013年05月24日 02时49分52秒
  *       Revision:  none
  *       Compiler:  gcc
  *
- *         Author:  Tyler Chung
+ *         Author:  Elton Chung
  *   Organization:  SYSU
  *
  * =====================================================================================
@@ -30,7 +30,7 @@
 #include "eaputils.h"
 #include <stdarg.h>
 
-static const char *lockfname = "/tmp/clih3c.lock";
+static const char *lockfname = "/tmp/sysuh3c.lock";
 int autoretry_count = 5;
 _Bool toDaemon = 0;
 _Bool isDaemon = 0;
@@ -67,7 +67,7 @@ void daemonize() {
     sprintf(pidstr, "%d\n", getpid());
     write(lockfd, pidstr, strlen(pidstr));
 
-    openlog("clih3c", LOG_CONS, LOG_USER);
+    openlog("sysuh3c", LOG_CONS, LOG_USER);
 
     signal(SIGCHLD, SIG_IGN);
     signal(SIGTSTP, SIG_IGN);
@@ -120,7 +120,7 @@ static struct option arglist[] = {
         {NULL, 0, NULL, 0}
     };
 
-static const char usage_str[] = "Usage: clih3c [arg]\n"
+static const char usage_str[] = "Usage: sysuh3c [arg]\n"
                 "   -h --help       print this screen\n"
                 "   -u --user       user account\n"
                 "   -p --password   password\n"

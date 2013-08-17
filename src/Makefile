@@ -14,4 +14,4 @@ eaputils.o: eaputils.c eaputils.h eapdef.h
 	$(CC) $(CFLAGS) -c -o $@ $<
 
 clean:
-	rm -f *.o clih3c
+	rm -f *.o sysuh3c
