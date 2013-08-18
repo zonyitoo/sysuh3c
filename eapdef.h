@@ -6,10 +6,12 @@
 #include <string>
 #include <array>
 #include <vector>
+#include <memory>
+#include <iostream>
 
 // Constants 
 // References : http://tools.ietf.org/html/rfc3748
-static const uint32_t ETHERTYPE_PAE = 0x888e;
+static const uint16_t ETHERTYPE_PAE = 0x888e;
 
 typedef std::array<uint8_t, 6> mac_addr_t;
 static const mac_addr_t PAE_GROUP_ADDR = {{0x01, 0x80, 0xc2, 0x00, 0x00, 0x03}};
@@ -52,63 +54,21 @@ struct eap_t {
     uint8_t id;
     uint16_t eap_len;
     uint8_t reqtype;
-    uint8_t datalen;
     std::vector<uint8_t> data;
+
+    std::string to_buf() const;
+    uint16_t get_len() const;
 };
 
 struct eapol_t {
     uint8_t vers;
     uint8_t type;
     uint16_t eapol_len;
-    eap_t eap;
+    std::shared_ptr<eap_t> eap;
+
+    std::string to_buf() const;
+    uint16_t get_len() const;
 };
-
-template <typename T>
-inline void Append(std::vector<uint8_t>& vec, const T data) {
-    uint8_t * pnt = (uint8_t *)(&data);
-    for (size_t i = 0; i < sizeof(data); ++ i)
-        vec.push_back(*(pnt ++));
-}
-
-inline void get_EAPOL(std::vector<uint8_t>& result, uint8_t type, const std::vector<uint8_t>& payload = std::vector<uint8_t>()) {
-    result.push_back(EAPOL_VERSION);
-    Append(result, type);
-    uint16_t len = static_cast<uint16_t>(payload.size());
-    len = htons(len);
-    Append(result, len);
-    result.insert(result.end(), payload.begin(), payload.end());
-}
-
-inline std::vector<uint8_t> get_EAP(uint8_t code, uint8_t id, uint8_t type,  
-        const std::vector<uint8_t>& data = std::vector<uint8_t>()) {
-    std::vector<uint8_t> result;
-    uint16_t n = 4;
-    Append(result, code);
-    Append(result, id);
-    if (code == EAP_SUCCESS || code == EAP_FAILURE) {
-        n = htons(n);
-        Append(result, n);
-    }
-    else {
-        n = 5 + data.size();
-        n = htons(n);
-        Append(result, n);
-        Append(result, type);
-        result.insert(result.end(), data.begin(), data.end());
-    }
-    return std::move(result);
-}
-
-inline std::vector<uint8_t> get_ethernet_header(const mac_addr_t& src, const mac_addr_t& dst, uint16_t type) {
-    type = htons(type);
-    std::vector<uint8_t> result;
-    result.assign(dst.begin(), dst.end());
-    result.insert(result.end(), src.begin(), src.end());
-    uint8_t *pnt = (uint8_t *)(&type);
-    result.push_back(*pnt);
-    result.push_back(*(pnt + 1));
-    return std::move(result);
-}
 
 enum {
     EAPAUTH_UNKNOWN_REQUEST_TYPE = -3,
@@ -152,3 +112,15 @@ inline std::string strstat(int statno) {
         return std::string("Unknown Status Code");
     }
 }
+
+class EAPAuthException : public std::runtime_error {
+    public: 
+        explicit EAPAuthException(const std::string& what_arg)
+            : std::runtime_error(what_arg) {}
+};
+
+class EAPAuthFailed : public EAPAuthException {
+    public:
+        explicit EAPAuthFailed()
+            : EAPAuthException("EAPAuth Failed!") {}
+};

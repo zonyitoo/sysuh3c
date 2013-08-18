@@ -1,49 +1,42 @@
 #pragma once
 
 #include "eapdef.h"
-#include <netpacket/packet.h>
 #include <functional>
 #include <iostream>
 #include <stdexcept>
 #include <vector>
 #include <array>
+#include "eaputils.h"
 
 class EAPAuth {
     public:
         EAPAuth(const std::string&, const std::string&, const std::string&);
         ~EAPAuth();
 
-        void auth() const;
+        void auth();
         void logoff();
-        void redirect_promote(const std::function<void(const std::string&)>&);
-        void set_status_changed_listener(const std::function<void(int statno)>&);
+        void set_promote_listener(const std::function<void(const std::string&)>&);
+        void set_status_listener(const std::function<void(int statno)>&);
 
         std::string get_user_name() const;
 
     private:
-        void send_start() const;
-        void send_logoff() const;
-        void send_response_id(uint8_t packet_id) const;
-        void send_response_md5(uint8_t packet_id, const std::vector<uint8_t>& md5data) const;
-        void send_response_h3c(uint8_t packet_id) const;
+        void send_start();
+        void send_logoff();
+        void send_response_id(uint8_t packet_id);
+        void send_response_md5(uint8_t packet_id, const std::vector<uint8_t>& md5data);
+        void send_response_h3c(uint8_t packet_id);
 
-        bool eap_handler(const std::vector<uint8_t>& eap_packet) const;
+        void eap_handler(const eapol_t& eapol_packet);
 
-        int client_fd;
         bool has_sent_logoff;
-        std::vector<uint8_t> ethernet_header;
 
-        std::string iface;
+        EAPClient eapclient;
         std::string user_name;
         std::string user_password;
-
-        struct sockaddr_ll sock_addr;
 
         std::function<void(const std::string&)> display_promote;
         std::function<void(int statno)> status_notify;
 };
 
-class EAPAuthException : public std::runtime_error {
-    public: 
-        explicit EAPAuthException(const std::string&);
-};
+
