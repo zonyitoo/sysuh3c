@@ -12,6 +12,7 @@
 #include <cstring>
 #include <cstdlib>
 #include <unistd.h>
+#include <syslog.h>
 using namespace std;
 
 int lockfd = -1;
@@ -23,6 +24,8 @@ static void interrupt_handler(int signo) {
     exit(EXIT_FAILURE);
 }
 
+bool is_daemon = false;
+
 void daemonize() {
     if (getpid() == 1) return;
     pid_t pid = fork();
@@ -32,9 +35,9 @@ void daemonize() {
 
     setsid();
 
-    freopen("/dev/null", "r", stdin);
-    freopen("/dev/null", "w", stdout);
-    freopen("/dev/null", "w", stderr);
+    close(fileno(stdin));
+    close(fileno(stdout));
+    close(fileno(stderr));
 
     umask(027);
     chdir("/tmp");
@@ -47,11 +50,16 @@ void daemonize() {
     sprintf(pidstr, "%d\n", getpid());
     write(lockfd, pidstr, strlen(pidstr));
 
+    openlog("sysuh3c", LOG_CONS, LOG_USER);
+
     signal(SIGCHLD, SIG_IGN);
     signal(SIGTSTP, SIG_IGN);
     signal(SIGTTOU, SIG_IGN);
     signal(SIGTTIN, SIG_IGN);
     signal(SIGINT, interrupt_handler);
+    signal(SIGTERM, interrupt_handler);
+
+    is_daemon = true;
 }
 
 int main(int argc, char **argv) {
@@ -122,19 +130,29 @@ int main(int argc, char **argv) {
         string cpmsg(std::move(msg));
         cpmsg.erase(0, cpmsg.find_first_not_of("\t\n\r"));
         cpmsg.erase(cpmsg.find_last_not_of("\t\n\r") + 1);
-        if (!cpmsg.empty())
-            cout << cpmsg << endl; 
+        if (!cpmsg.empty()) {
+            if (!is_daemon)
+                cout << cpmsg << endl;
+            else
+                syslog(LOG_INFO, "%s", cpmsg.c_str());
+        }
     });
     
     bool haslogin = false;
     int autoretry_count = 5;
 
     authservice.set_status_listener([&] (int8_t statno) { 
-        if (color)
-            cout << "\033[01;" << 30 + statno << "m[" 
-                << name << ":" << iface << "] " << strstat(statno) << "\033[0m" << endl;
-        else
-            cout << "[" << name << ":" << iface << "] " << strstat(statno) << endl;
+        if (!is_daemon) {
+            if (color)
+                cout << "\033[01;" << 30 + statno << "m[" 
+                    << name << ":" << iface << "] " << strstat(statno) << "\033[0m" << endl;
+            else
+                cout << "[" << name << ":" << iface << "] " << strstat(statno) << endl;
+        }
+        else {
+            syslog(LOG_INFO, "[%s:%s] %s", name.c_str(), iface.c_str(),
+                strstat(statno).c_str());
+        }
 
         switch (statno) {
         case EAPAUTH_EAP_SUCCESS:
