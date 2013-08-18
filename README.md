@@ -25,4 +25,6 @@ make
 -p --password    password
 -i --iface       network interface (default is eth0)
 -d --daemonize   daemonize
+-c --colorize    colorize
+-l --logoff      logoff
 ```
