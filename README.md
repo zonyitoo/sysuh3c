@@ -14,10 +14,11 @@ Then you get `sysuh3c` executable file.
 
 ```bash
 -h --help        print help screen
--u --user        user account
+-u --user        user account (must!)
 -p --password    password
 -i --iface       network interface (default is eth0)
 -d --daemonize   daemonize
+-c --colorize    colorize
 ```
 
 ## Another version for OpenWRT
