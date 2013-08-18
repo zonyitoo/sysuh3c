@@ -54,8 +54,7 @@ typedef struct __eap_t {
     uint8_t id;
     uint16_t eap_len;
     uint8_t reqtype;
-    uint8_t datalen;
-    const uint8_t * data;
+    uint8_t * data;
 } eap_t;
 
 typedef struct __eapol_t {

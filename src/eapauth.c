@@ -35,9 +35,13 @@ int send_start(const eapauth_t *user);
 int send_logoff(const eapauth_t *user);
 int send_response_id(const eapauth_t *user, uint8_t packet_id);
 int send_response_h3c(const eapauth_t *user, uint8_t packet_id);
-int send_response_md5(const eapauth_t *user, uint8_t packet_id, const uint8_t *md5data, uint16_t datalen);
+int send_response_md5(const eapauth_t *user, uint8_t packet_id, const uint8_t *md5data);
 
-int eap_handler(const eapauth_t *user, const uint8_t *buf, size_t len);
+int eap_handler(const eapauth_t *user, const eapol_t *data);
+int client_send(const eapauth_t *user, const eapol_t *data);
+int client_recv(const eapauth_t *user, eapol_t *data);
+
+void set_socket_timeout(const eapauth_t *user, __time_t sec);
 
 void status_notify_func(int statno) {
     fprintf(stderr, "%s\n", strstat(statno));
@@ -114,18 +118,17 @@ int eapauth_init(eapauth_t *user, const char *iface) {
 
 int eapauth_auth(const eapauth_t *user) {
     char buf[1600] = {0};
-    int ret;
-    socklen_t sock_addr_len = sizeof(user->addr);
+
+    set_socket_timeout(user, 5);
     send_start(user);
     status_notify(EAPAUTH_AUTH_START);
     while (1) {
-        ret = recvfrom(user->client_fd, buf, sizeof(buf), 0,
-                           (struct sockaddr *) &user->addr, &sock_addr_len);
-        if (ret <= 0)
-            return EAPAUTH_ERR;
+        eapol_t packet;
+        packet.eap.data = buf;
+        int ret = client_recv(user, &packet);
+        if (ret == EAPAUTH_ERR) return ret;
 
-        ret = eap_handler(user, buf + sizeof(user->ethernet_header), 
-                    ret - sizeof(user->ethernet_header));
+        ret = eap_handler(user, &packet);
         if (ret == EAPAUTH_ERR || ret == EAPAUTH_FAIL) return ret;
     }
     return EAPAUTH_OK;
@@ -139,68 +142,110 @@ void eapauth_redirect_promote(void (*func)(int, const char*, ...)) {
     display_promote = func;
 }
 
-int send_start(const eapauth_t *user) {
-    uint8_t buf[64] = {0};
+int client_send(const eapauth_t *user, const eapol_t *data) {
+    uint8_t buf[2048] = {0};
     uint8_t *p_buf = buf;
     int len;
+    uint16_t tmp;
 
-    if (user == NULL) return EAPAUTH_ERR;
+    if (user == NULL || data == NULL) return EAPAUTH_ERR;
 
     memcpy(p_buf, user->ethernet_header, sizeof(user->ethernet_header));
     p_buf += sizeof(user->ethernet_header);
-    p_buf = get_EAPOL(EAPOL_START, NULL, 0, p_buf);
+
+    *p_buf ++ = data->vers;
+    *p_buf ++ = data->type;
+    tmp = htons(data->eapol_len);
+    memcpy(p_buf, &tmp, sizeof(tmp));
+    p_buf += sizeof(data->eapol_len);
+    if (data->eapol_len != 0) {
+        *p_buf ++ = data->eap.code;
+        *p_buf ++ = data->eap.id;
+        tmp = htons(data->eap.eap_len);
+        memcpy(p_buf, &tmp, sizeof(tmp));
+        p_buf += sizeof(data->eap.eap_len);
+        if (data->eap.eap_len > 4 && data->eap.data != NULL) {
+            *p_buf ++ = data->eap.reqtype;
+            memcpy(p_buf, data->eap.data, data->eap.eap_len - 5);
+            p_buf += data->eap.eap_len - 5;
+        }
+    }
     len = sendto(user->client_fd, buf, p_buf - buf, MSG_NOSIGNAL,
             (struct sockaddr *) &user->addr, sizeof(user->addr));
-    if (len <= 0)
-        return EAPAUTH_ERR;
+    if (len <= 0) return EAPAUTH_ERR;
     return EAPAUTH_OK;
+}
+
+int client_recv(const eapauth_t *user, eapol_t *data) {
+    char buf[1600] = {0};
+    socklen_t sock_addr_len = sizeof(user->addr);
+    int ret = recvfrom(user->client_fd, buf, sizeof(buf), 0,
+                        (struct sockaddr *) &user->addr, &sock_addr_len);
+    if (ret <= 0 || data == NULL)
+        return EAPAUTH_ERR;
+
+    // remove header
+    const uint8_t *ptr = buf + sizeof(user->ethernet_header);
+    data->vers = ptr[0];
+    data->type = ptr[1];
+    data->eapol_len = ntohs(*((uint16_t *)(&ptr[2])));
+    if (data->eapol_len != 0) {
+        data->eap.code = ptr[4];
+        data->eap.id = ptr[5];
+        data->eap.eap_len = ntohs(*((uint16_t *)(&ptr[6])));
+        if (data->eap.eap_len > 4) {
+            data->eap.reqtype = ptr[8];
+            memcpy(data->eap.data, ptr + 10, data->eap.eap_len - 6);
+        }
+    }
+
+    return EAPAUTH_OK;
+}
+
+int send_start(const eapauth_t *user) {
+    if (user == NULL) return EAPAUTH_ERR;
+
+    eapol_t eapol_start;
+    eapol_start.vers = EAPOL_VERSION;
+    eapol_start.type = EAPOL_START;
+    eapol_start.eapol_len = 0;
+    return client_send(user, &eapol_start);
 }
 
 int send_logoff(const eapauth_t *user) {
-    uint8_t buf[64] = {0};
-    uint8_t *p_buf = buf;
-    int len;
-
     if (user == NULL) return EAPAUTH_ERR;
 
-    memcpy(p_buf, user->ethernet_header, sizeof(user->ethernet_header));
-    p_buf += sizeof(user->ethernet_header);
-    p_buf = get_EAPOL(EAPOL_LOGOFF, NULL, 0, p_buf);
+    eapol_t eapol_logoff;
+    eapol_logoff.vers = EAPOL_VERSION;
+    eapol_logoff.type = EAPOL_LOGOFF;
+    eapol_logoff.eapol_len = 0;
 
-    len = sendto(user->client_fd, buf, p_buf - buf, MSG_NOSIGNAL,
-            (struct sockaddr *) &user->addr, sizeof(user->addr));
-    if (len <= 0)
-        return EAPAUTH_ERR;
-    return EAPAUTH_OK;
+    return client_send(user, &eapol_logoff);
 }
 
 int send_response_id(const eapauth_t *user, uint8_t packet_id) {
-    uint8_t eapbuf[128] = {0};
     uint8_t eappacket[128] = {0};
-    uint8_t *p_buf;
-    int len;
 
     if (user == NULL) return EAPAUTH_ERR;
 
     memcpy(eappacket, VERSION_INFO, sizeof(VERSION_INFO));
     strcpy(eappacket + sizeof(VERSION_INFO), user->name);
 
-    p_buf = get_EAP(EAP_RESPONSE, packet_id, EAP_TYPE_ID, eappacket, sizeof(VERSION_INFO) + strlen(user->name), eapbuf);
-    p_buf = get_EAPOL(EAPOL_EAPPACKET, eapbuf, p_buf - eapbuf, eappacket + sizeof(user->ethernet_header));
-    memcpy(eappacket, user->ethernet_header, sizeof(user->ethernet_header));
-    len = sendto(user->client_fd, eappacket, p_buf - eappacket,
-            MSG_NOSIGNAL, (struct sockaddr *) &user->addr, sizeof(user->addr));
-    if (len < 0)
-        return EAPAUTH_ERR;
-    return EAPAUTH_OK;
+    eapol_t eapol_id;
+    eapol_id.vers = EAPOL_VERSION;
+    eapol_id.type = EAPOL_EAPPACKET;
+    eapol_id.eap.code = EAP_RESPONSE;
+    eapol_id.eap.id = packet_id;
+    eapol_id.eap.reqtype = EAP_TYPE_ID;
+    eapol_id.eap.data = eappacket;
+    eapol_id.eap.eap_len = sizeof(VERSION_INFO) + strlen(user->name) + 5;
+    eapol_id.eapol_len = eapol_id.eap.eap_len;
+    return client_send(user, &eapol_id);
 }
 
 int send_response_h3c(const eapauth_t *user, uint8_t packet_id) {
 
     uint8_t packetbuf[128] = {0};
-    uint8_t eapbuf[128] = {0};
-    uint8_t *p_buf;
-    int len;
 
     if (user == NULL) return EAPAUTH_ERR;
 
@@ -208,23 +253,22 @@ int send_response_h3c(const eapauth_t *user, uint8_t packet_id) {
     strcpy(packetbuf + 1, user->password);
     strcpy(packetbuf + packetbuf[0] + 1, user->name);
 
-    p_buf = get_EAP(EAP_RESPONSE, packet_id, EAP_TYPE_H3C, packetbuf, packetbuf[0] + strlen(user->name) + 1, eapbuf);
-    p_buf = get_EAPOL(EAPOL_EAPPACKET, eapbuf, p_buf - eapbuf, packetbuf + sizeof(user->ethernet_header));
-    memcpy(packetbuf, user->ethernet_header, sizeof(user->ethernet_header));
-
-    len = sendto(user->client_fd, packetbuf, p_buf - packetbuf, MSG_NOSIGNAL,
-            (struct sockaddr *) &user->addr, sizeof(user->addr));
-    if (len <= 0)
-        return EAPAUTH_ERR;
-    return EAPAUTH_OK;
+    eapol_t eap_h3c;
+    eap_h3c.vers = EAPOL_VERSION;
+    eap_h3c.type = EAPOL_EAPPACKET;
+    eap_h3c.eap.code = EAP_RESPONSE;
+    eap_h3c.eap.id = packet_id;
+    eap_h3c.eap.reqtype = EAP_TYPE_H3C;
+    eap_h3c.eap.data = packetbuf;
+    eap_h3c.eap.eap_len = packetbuf[0] + strlen(user->name) + 6;
+    eap_h3c.eapol_len = eap_h3c.eap.eap_len;
+    return client_send(user, &eap_h3c);
 }
-int send_response_md5(const eapauth_t *user, uint8_t packet_id, const uint8_t *md5data, uint16_t datalen) {
+
+int send_response_md5(const eapauth_t *user, uint8_t packet_id, const uint8_t *md5data) {
     uint8_t chap[16] = {0};
     size_t i;
-    uint8_t eapbuf[128] = {0};
     uint8_t packetbuf[128] = {0};
-    uint8_t *p_buf;
-    int len;
 
     if (user == NULL || md5data == NULL) return EAPAUTH_ERR;
 
@@ -236,82 +280,63 @@ int send_response_md5(const eapauth_t *user, uint8_t packet_id, const uint8_t *m
     memcpy(packetbuf + 1, chap, sizeof(chap));
     strcpy(packetbuf + sizeof(chap) + 1, user->name);
 
-    p_buf = get_EAP(EAP_RESPONSE, packet_id, EAP_TYPE_MD5, 
-            packetbuf, sizeof(chap) + strlen(user->name) + 1, eapbuf);
-    p_buf = get_EAPOL(EAPOL_EAPPACKET, eapbuf, p_buf - eapbuf, packetbuf + sizeof(user->ethernet_header));
-    memcpy(packetbuf, user->ethernet_header, sizeof(user->ethernet_header));
-
-    len = sendto(user->client_fd, packetbuf, p_buf - packetbuf, MSG_NOSIGNAL,
-            (struct sockaddr *) &user->addr, sizeof(user->addr));
-    if (len <= 0)
-        return EAPAUTH_ERR;
-    return EAPAUTH_OK;
+    eapol_t eap_md5;
+    eap_md5.vers = EAPOL_VERSION;
+    eap_md5.type = EAPOL_EAPPACKET;
+    eap_md5.eap.code = EAP_RESPONSE;
+    eap_md5.eap.id = packet_id;
+    eap_md5.eap.reqtype = EAP_TYPE_MD5;
+    eap_md5.eap.data = packetbuf;
+    eap_md5.eap.eap_len = sizeof(chap) + strlen(user->name) + 6;
+    eap_md5.eapol_len = eap_md5.eap.eap_len;
+    return client_send(user, &eap_md5);
 }
 
-int eap_handler(const eapauth_t *user, const uint8_t *eap_packet, size_t len) {
-    eapol_t eapol_packet;
-    eapol_packet.vers = eap_packet[0];
-    eapol_packet.type = eap_packet[1];
-    eapol_packet.eapol_len = ntohs(*((uint16_t *) &eap_packet[2]));
-    
-    if (eapol_packet.type != EAPOL_EAPPACKET) {
+void set_socket_timeout(const eapauth_t *user, __time_t sec) {
+    struct timeval timeout;
+    timeout.tv_sec = sec;
+    timeout.tv_usec = 0;
+    setsockopt(user->client_fd, SOL_SOCKET, SO_RCVTIMEO, (char *) &timeout, sizeof(timeout));
+}
+
+int eap_handler(const eapauth_t *user, const eapol_t *eapol_packet) {
+    if (eapol_packet == NULL || user == NULL) return EAPAUTH_ERR;
+    if (eapol_packet->type != EAPOL_EAPPACKET) {
         status_notify(EAPAUTH_UNKNOWN_PACKET_TYPE);
-        display_promote(LOG_ERR, "got unknown packet type: %hu",
-                __func__, __LINE__, eapol_packet.type);
         return EAPAUTH_UNKNOWN;
     }
 
-    eapol_packet.eap.code = eap_packet[4];
-    eapol_packet.eap.id = eap_packet[5];
-    
-    eapol_packet.eap.eap_len = ntohs(*(uint16_t *) &eap_packet[6]);
-
-    switch (eapol_packet.eap.code) {
+    switch (eapol_packet->eap.code) {
         case EAP_SUCCESS:
-            {
-                struct timeval timeout;
-                status_notify(EAPAUTH_EAP_SUCCESS);
-                timeout.tv_sec = 30;
-                timeout.tv_usec = 0;
-                setsockopt(user->client_fd, SOL_SOCKET, SO_RCVTIMEO, (char *) &timeout, sizeof(timeout));
-            }
+            status_notify(EAPAUTH_EAP_SUCCESS);
+            set_socket_timeout(user, 30);
             break;
         case EAP_FAILURE:
-            {
-                struct timeval timeout;
-                status_notify(EAPAUTH_EAP_FAILURE);
-                timeout.tv_sec = 5;
-                timeout.tv_usec = 0;
-                setsockopt(user->client_fd, SOL_SOCKET, SO_RCVTIMEO, (char *) &timeout, sizeof(timeout));
-            }
+            status_notify(EAPAUTH_EAP_FAILURE);
+            set_socket_timeout(user, 5);
             return EAPAUTH_FAIL;
         case EAP_RESPONSE:
             status_notify(EAPAUTH_EAP_RESPONSE);
             break;
         case EAP_REQUEST:
-            eapol_packet.eap.reqtype = eap_packet[8];
-            eapol_packet.eap.datalen = eap_packet[9];
-            eapol_packet.eap.data = &eap_packet[10];
-            switch (eapol_packet.eap.reqtype) {
+            switch (eapol_packet->eap.reqtype) {
                 case EAP_TYPE_ID:
                     status_notify(EAPAUTH_AUTH_ID);
-                    if (send_response_id(user, eapol_packet.eap.id) != 0) {
+                    if (send_response_id(user, eapol_packet->eap.id) != 0) {
                         display_promote(LOG_ERR, "send_response_id error");
                         return EAPAUTH_ERR;
                     }
                     break;
                 case EAP_TYPE_H3C:
                     status_notify(EAPAUTH_AUTH_H3C);
-                    if (send_response_h3c(user, eapol_packet.eap.id) != 0) {
+                    if (send_response_h3c(user, eapol_packet->eap.id) != 0) {
                         display_promote(LOG_ERR, "send_response_h3c error");
                         return EAPAUTH_ERR;
                     }
                     break;
                 case EAP_TYPE_MD5:
                     status_notify(EAPAUTH_AUTH_MD5);
-                    if (send_response_md5(user, eapol_packet.eap.id, 
-                            eapol_packet.eap.data, eapol_packet.eap.datalen) != 0) {
-
+                    if (send_response_md5(user, eapol_packet->eap.id, eapol_packet->eap.data) != 0) {
                         display_promote(LOG_ERR, "send_response_md5 error");
                         return EAPAUTH_ERR;
                     }

@@ -29,11 +29,14 @@
 #include <syslog.h>
 #include "eaputils.h"
 #include <stdarg.h>
+#include <unistd.h>
 
 static const char *lockfname = "/tmp/sysuh3c.lock";
 int autoretry_count = 5;
 _Bool toDaemon = 0;
 _Bool isDaemon = 0;
+_Bool color = 0;
+_Bool has_login = 0;
 
 static void signal_handler(int signo) {
     remove(lockfname);
@@ -83,16 +86,22 @@ static void status_callback(int statno) {
     if (statno != EAPAUTH_EAP_RESPONSE) {
         if (isDaemon)
             syslog(LOG_INFO, "%s", strstat(statno));
-        else
-            printf("%s\n", strstat(statno));
+        else {
+            if (color)
+                printf("\033[01;%dm==> %s\033[0m\n", statno + 30, strstat(statno));
+            else
+                printf("%s\n", strstat(statno));
+        }
     }
     switch (statno) {
         case EAPAUTH_EAP_SUCCESS:
             autoretry_count = 5;
             if (toDaemon)
                 daemonize();
+            has_login = 1;
             break;
         case EAPAUTH_EAP_FAILURE:
+            has_login = 0;
             break;
     }
 }
@@ -117,6 +126,7 @@ static struct option arglist[] = {
         {"iface", optional_argument, NULL, 'i'},
         {"daemonize", no_argument, NULL, 'd'},
         {"logoff", no_argument, NULL, 'l'},
+        {"colorize", no_argument, NULL, 'c'},
         {NULL, 0, NULL, 0}
     };
 
@@ -126,7 +136,8 @@ static const char usage_str[] = "Usage: sysuh3c [arg]\n"
                 "   -p --password   password\n"
                 "   -i --iface      network interface (default eth0)\n"
                 "   -d --daemonize  daemonize\n"
-                "   -l --logoff     logoff\n";
+                "   -l --logoff     logoff\n"
+                "   -c --colorize   colorize\n";
 
 
 int main(int argc, char **argv) {
@@ -145,7 +156,7 @@ int main(int argc, char **argv) {
     
     eapauth_t eapauth;
 
-    while ((argval = getopt_long(argc, argv, "u:p:i:dlh", arglist, NULL)) != -1) {
+    while ((argval = getopt_long(argc, argv, "u:p:i:dlhc", arglist, NULL)) != -1) {
         switch (argval) {
             case 'h':
                 printf(usage_str);
@@ -173,6 +184,9 @@ int main(int argc, char **argv) {
             case 'l':
                 toLogoff = 1;
                 break;
+            case 'c':
+                color = 1;
+                break;
             default:
                 exit(EXIT_FAILURE);
         }
@@ -186,7 +200,6 @@ int main(int argc, char **argv) {
         fclose(fp);
     }
 
-
     if (eapauth_init(&eapauth, iface) != 0)
         exit(EXIT_FAILURE);
 
@@ -199,13 +212,29 @@ int main(int argc, char **argv) {
         exit(EXIT_SUCCESS);
     }
 
+    if (strlen(eapauth.name) == 0) {
+        display_msg(LOG_ERR, "Argument Error. Need user name");
+        exit(EXIT_FAILURE);
+    }
+
+    if (strlen(eapauth.password) == 0) {
+        char *pwd = getpass("Password: ");
+        if (strlen(pwd) > 16) {
+            display_msg(LOG_ERR, "Password too long");
+            exit(EXIT_FAILURE);
+        }
+        strcpy(eapauth.password, pwd);
+    }
+
     eapauth_set_status_listener(status_callback);
     eapauth_redirect_promote(display_msg);
 
     while (autoretry_count --) {
         ret = eapauth_auth(&eapauth);
-        if (ret == EAPAUTH_ERR) 
+        if (ret == EAPAUTH_ERR) {
             display_msg(LOG_ERR, "eapauth_auth error : %d", ret);
+            if (!has_login) exit(EXIT_FAILURE);
+        }
         else if (ret == EAPAUTH_FAIL)
             exit(EXIT_FAILURE);
         sleep(2);
