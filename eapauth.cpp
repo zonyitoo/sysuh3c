@@ -179,8 +179,8 @@ void EAPAuth::eap_handler(const eapol_t& eapol_packet) {
                 }
                 size_t outleft = eapol_packet.eap->data.size() * 2;
                 char *buf = new char[outleft];
-                size_t inleft = eapol_packet.eap->data.size() - 2;
-                char *p_in = const_cast<char *>((const char *) eapol_packet.eap->data.data() + 2);
+                size_t inleft = eapol_packet.eap->data.size() + 1;
+                char *p_in = const_cast<char *>((const char *) eapol_packet.eap->data.data()) + 2;
 
                 char *p_out = buf;
                 while (inleft != 0) {

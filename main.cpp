@@ -11,6 +11,7 @@
 #include <sys/stat.h>
 #include <cstring>
 #include <cstdlib>
+#include <unistd.h>
 using namespace std;
 
 int lockfd = -1;
@@ -54,16 +55,6 @@ void daemonize() {
 }
 
 int main(int argc, char **argv) {
-
-    if (argc < 3) {
-        printf("Usage: sysuh3c [arg]\n"
-                "   -h --help       print this screen\n"
-                "   -u --user       user account\n"
-                "   -p --password   password\n"
-                "   -i --iface      network interface (default eth0)\n"
-                "   -d --daemonize  daemonize\n");
-        exit(EXIT_FAILURE);
-    }
 
     if (geteuid() != 0) {
         printf("You have to run the program as root\n");
@@ -116,9 +107,13 @@ int main(int argc, char **argv) {
         }
     }
 
-    if (name.empty() || password.empty() || iface.empty()) {
-        fprintf(stderr, "Argument Error. You should provide valid name and password.");
-        return -1;
+    if (name.empty() || iface.empty()) {
+        fprintf(stderr, "Argument Error! No user name.");
+        exit(EXIT_FAILURE);
+    }
+    if (password.empty()) {
+        char *pwd = getpass("Password: ");
+        password = pwd;
     }
     
     EAPAuth authservice(name, password, iface);
@@ -136,9 +131,11 @@ int main(int argc, char **argv) {
 
     authservice.set_status_listener([&] (int8_t statno) { 
         if (color)
-            cout << "\033[01;" << 30 + statno << "m==> " << strstat(statno) << "\033[0m" << endl;
+            cout << "\033[01;" << 30 + statno << "m[" 
+                << name << ":" << iface << "] " << strstat(statno) << "\033[0m" << endl;
         else
-            cout << "==> " << strstat(statno) << endl;
+            cout << "[" << name << ":" << iface << "] " << strstat(statno) << endl;
+
         switch (statno) {
         case EAPAUTH_EAP_SUCCESS:
             haslogin = true;
