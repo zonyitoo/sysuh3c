@@ -11,7 +11,7 @@ include $(INCLUDE_DIR)/package.mk
 define Package/$(PKG_NAME)
         SECTION:=utils
         CATEGORY:=Utilities
-        DEPENDS:=+libc +libgcc
+        DEPENDS:=+libc +libgcc +libuci
         TITLE:=sysuh3c
         PKGARCH:=ar71xx
         MAINTAINER:=zonyitoo
@@ -49,6 +49,8 @@ endef
 define Package/$(PKG_NAME)/install
 		$(INSTALL_DIR) $(1)/usr/bin
 		$(INSTALL_BIN) $(PKG_BUILD_DIR)/sysuh3c $(1)/usr/bin
+		$(INSTALL_DIR) $(1)/etc/config
+		$(CP) $(PKG_BUILD_DIR)/sysuh3c.conf $(1)/etc/config/sysuh3c
 endef
 
 #define Package/$(PKG_NAME)/preinst
@@ -73,7 +75,7 @@ endef
 define Package/$(PKG_NAME)/prerm
 		#!/bin/sh
 		if [ -f /tmp/sysuh3c.lock ]; then
-			cat /tmp/sysuh3c.lock | while read SYSUH3C_LOCK; do kill -int $SYSUH3C_LOCK; done
+			cat /tmp/sysuh3c.lock | while read SYSUH3C_LOCK; do kill -int $(SYSUH3C_LOCK); done
 			rm -f /tmp/sysuh3c.lock
 		fi
 endef

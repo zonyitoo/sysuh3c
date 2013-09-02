@@ -29,7 +29,9 @@
 #include <syslog.h>
 #include "eaputils.h"
 #include <stdarg.h>
-#include <unistd.h>
+#include <uci.h>
+#include <termios.h>
+#include <assert.h>
 
 static const char *lockfname = "/tmp/sysuh3c.lock";
 int autoretry_count = 5;
@@ -119,6 +121,35 @@ static void display_msg(int priority, const char *format, ...) {
     va_end(arg);
 }
 
+static void get_pass(char *storage, size_t length, const char *promote) {
+    assert(storage != NULL);
+    struct termios oflags, nflags;
+
+    /* disabling echo */
+    tcgetattr(fileno(stdin), &oflags);
+    nflags = oflags;
+    nflags.c_lflag &= ~ECHO;
+    nflags.c_lflag != ECHONL;
+
+    if (tcsetattr(fileno(stdin), TCSANOW, &nflags) != 0) {
+        perror("tcsetattr");
+        exit(EXIT_FAILURE);
+    }
+
+    if (promote) {
+        printf("%s: ", promote);
+    }
+
+    strcpy(storage, "");
+    scanf("%s", storage);
+
+    /* restore terminal */
+    if (tcsetattr(fileno(stdin), TCSANOW, &oflags) != 0) {
+        perror("tcsetattr");
+        exit(EXIT_FAILURE);
+    }
+}
+
 static struct option arglist[] = {
         {"help", no_argument, NULL, 'h'},
         {"user", required_argument, NULL, 'u'},
@@ -143,11 +174,14 @@ static const char usage_str[] = "Usage: sysuh3c [arg]\n"
 int main(int argc, char **argv) {
 
     int ret;
-    char iface[8] = "eth0";
+    char iface[8] = {0};
     char argval;
     FILE *fp = NULL;
 
     _Bool toLogoff = 0;
+
+    struct uci_context *uci_ctx = NULL;
+    struct uci_ptr uci_iface_ptr;
 
     if (geteuid() != 0) {
         display_msg(LOG_ERR, "You have to run the program as root\n");
@@ -155,6 +189,7 @@ int main(int argc, char **argv) {
     }
     
     eapauth_t eapauth;
+    memset(&eapauth, 0, sizeof(eapauth));
 
     while ((argval = getopt_long(argc, argv, "u:p:i:dlhc", arglist, NULL)) != -1) {
         switch (argval) {
@@ -200,6 +235,20 @@ int main(int argc, char **argv) {
         fclose(fp);
     }
 
+    if (strlen(iface) == 0) {
+        uci_ctx = uci_alloc_context();
+        char *expr = strdup("sysuh3c.@network[0].ifname");
+        if (uci_lookup_ptr(uci_ctx, &uci_iface_ptr, expr, true) != UCI_OK) {
+            uci_perror(uci_ctx, "Error while reading interface from config file");
+            exit(EXIT_FAILURE);
+        }
+        strcpy(iface, uci_iface_ptr.o->v.string);
+        if (strlen(iface) == 0)
+            strcpy(iface, "eth0");
+        uci_free_context(uci_ctx);
+        free(expr);
+    }
+
     if (eapauth_init(&eapauth, iface) != 0)
         exit(EXIT_FAILURE);
 
@@ -218,12 +267,7 @@ int main(int argc, char **argv) {
     }
 
     if (strlen(eapauth.password) == 0) {
-        char *pwd = getpass("Password: ");
-        if (strlen(pwd) > 16) {
-            display_msg(LOG_ERR, "Password too long");
-            exit(EXIT_FAILURE);
-        }
-        strcpy(eapauth.password, pwd);
+        get_pass(&eapauth.password, sizeof(eapauth.password), "Password");
     }
 
     eapauth_set_status_listener(status_callback);
