@@ -33,7 +33,7 @@
 #include <termios.h>
 #include <assert.h>
 
-static const char *lockfname = "/tmp/sysuh3c.lock";
+static const char *lockfname = "/var/run/sysuh3c.pid";
 int autoretry_count = 5;
 _Bool toDaemon = 0;
 _Bool isDaemon = 0;
@@ -233,6 +233,7 @@ int main(int argc, char **argv) {
         fscanf(fp, "%d", &pid);
         kill(pid, SIGINT);
         fclose(fp);
+        remove(lockfname);
     }
 
     if (strlen(iface) == 0) {
