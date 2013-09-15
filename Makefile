@@ -1,7 +1,7 @@
 include $(TOPDIR)/rules.mk
 
 PKG_NAME:=sysuh3c
-PKG_VERSION:=0.1
+PKG_VERSION:=0.2
 PKG_RELEASE:=1
 
 PKG_BUILD_DIR := $(BUILD_DIR)/$(PKG_NAME)
@@ -74,9 +74,9 @@ endef
 
 define Package/$(PKG_NAME)/prerm
 		#!/bin/sh
-		if [ -f /tmp/sysuh3c.lock ]; then
-			cat /tmp/sysuh3c.lock | while read SYSUH3C_LOCK; do kill -int $(SYSUH3C_LOCK); done
-			rm -f /tmp/sysuh3c.lock
+		if [ -f /var/run/sysuh3c.pid ]; then
+			cat /var/run/sysuh3c.pid | while read SYSUH3C_LOCK; do kill -int $(SYSUH3C_LOCK); done
+			rm -f /var/run/sysuh3c.pid
 		fi
 endef
 
