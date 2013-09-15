@@ -14,7 +14,15 @@ A CLI H3C Client for [OpenWRT](http://openwrt.org)
 
 ```bash
 git clone git@github.com:zonyitoo/sysuh3c.git -b openwrt package/sysuh3c
-make
+```
+
+* Modify sysuh3c/Makefile
+
+```makefile
+define Package/$(PKG_NAME)
+    ...
+    PKGARCH:=[arch]
+endef
 ```
 
 * You will get the `sysuh3c_[version]-1_[arch].ipk` in `bin/[arch]/package`
