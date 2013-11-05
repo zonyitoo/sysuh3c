@@ -7,12 +7,14 @@ A SYSU H3C Client in \*NIX
 We use GNU Automake build system. Run following commands under the root directory.
 
 ```bash
-$ ./configure
+$ ./configure --enable-showmessage
 $ make
 $ sudo make install
 ```
 
 Then you get `sysuh3c` executable file in `/usr/local/bin`.
+
+If you get errors about missing `iconv.h` while compiling, you should install iconv library or remove `--enable-showmessage`.
 
 ```bash
 -h --help        print help screen
