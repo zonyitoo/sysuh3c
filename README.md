@@ -4,13 +4,15 @@ A SYSU H3C Client in \*NIX
 
 ## Usage
 
-Just run make under the root directory of project.
+We use GNU Automake build system. Run following commands under the root directory.
 
 ```bash
-make
+$ ./configure
+$ make
+$ sudo make install
 ```
 
-Then you get `sysuh3c` executable file.
+Then you get `sysuh3c` executable file in `/usr/local/bin`.
 
 ```bash
 -h --help        print help screen
