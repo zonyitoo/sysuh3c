@@ -16,7 +16,7 @@
 using namespace std;
 
 int lockfd = -1;
-static const char *lockfname = "sysuh3c.lock";
+static const char *lockfname = "/tmp/sysuh3c.lock";
 
 static void interrupt_handler(int signo) {
     if (lockf(lockfd, F_ULOCK, 0) < 0) exit(EXIT_FAILURE);
@@ -40,7 +40,7 @@ void daemonize() {
     close(fileno(stderr));
 
     umask(027);
-    chdir("/tmp");
+    chdir("/");
 
     lockfd = open(lockfname, O_RDWR | O_CREAT, 0640);
     if (lockfd < 0) exit(EXIT_FAILURE);
@@ -65,7 +65,7 @@ void daemonize() {
 int main(int argc, char **argv) {
 
     if (geteuid() != 0) {
-        printf("You have to run the program as root\n");
+        cerr << "You have to run the program as root" << endl;
         exit(EXIT_FAILURE);
     }
     
@@ -110,14 +110,14 @@ int main(int argc, char **argv) {
                 color = true;
                 break;
             default:
-                printf("Argument Error. Unknown option.\n");
-                exit(EXIT_FAILURE);
+                cout << "Argument Error. Unknown option." << endl;
+                return EXIT_FAILURE;
         }
     }
 
     if (name.empty() || iface.empty()) {
-        fprintf(stderr, "Argument Error! No user name.");
-        exit(EXIT_FAILURE);
+        cerr <<  "Argument Error! No user name." << endl;
+        return EXIT_FAILURE;
     }
     if (password.empty()) {
         char *pwd = getpass("Password: ");
@@ -181,12 +181,15 @@ int main(int argc, char **argv) {
         }
         catch (const EAPAuthFailed& expt) {
             if (!haslogin) 
-                exit(EXIT_FAILURE);
+                return EXIT_FAILURE;
         }
         catch (const EAPAuthException& expt) {
             cerr << expt.what() << endl;
         }
         sleep(2);
     }
+
+    remove(lockfname);
+
     return 0;
 }
