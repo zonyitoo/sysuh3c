@@ -10,7 +10,10 @@
 #include <cstdio>
 #include <stdexcept>
 #include <stdarg.h>
-#include <iconv.h>
+#include "config.h"
+#ifdef WITH_SHOWMESSAGE
+#   include <iconv.h>
+#endif
 #include <iterator>
 
 EAPAuth::EAPAuth(const std::string& user_name, 
@@ -171,6 +174,7 @@ void EAPAuth::eap_handler(const eapol_t& eapol_packet) {
             }
             break;
         case 10:
+#ifdef WITH_SHOWMESSAGE
             {
                 iconv_t cd = iconv_open("UTF-8", "GBK");
                 if (cd == (iconv_t) -1) {
@@ -200,6 +204,7 @@ void EAPAuth::eap_handler(const eapol_t& eapol_packet) {
 
                 delete [] buf;
             }
+#endif
             break;
         default:
             status_notify(EAPAUTH_UNKNOWN_EAP_CODE);

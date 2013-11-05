@@ -5,7 +5,7 @@ AC_PREREQ([2.69])
 AC_INIT([sysuh3c], [1.0], [zonyitoo@gmail.com])
 AM_INIT_AUTOMAKE([-Wall -Werror foreign])
 AC_CONFIG_SRCDIR([src])
-AC_CONFIG_HEADERS([config.h])
+AC_CONFIG_HEADERS([src/config.h])
 AC_CONFIG_FILES([
     Makefile
     src/Makefile
@@ -32,5 +32,9 @@ AC_TYPE_UINT8_T
 # Checks for library functions.
 AC_FUNC_FORK
 AC_CHECK_FUNCS([getpass memset socket])
+
+AC_ARG_ENABLE(showmessage, Show messages from server, 
+              [AC_DEFINE([WITH_SHOWMESSAGE], [], [With show message support])],
+              [])
 
 AC_OUTPUT

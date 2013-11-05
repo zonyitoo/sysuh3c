@@ -99,6 +99,9 @@
 /* Version number of package */
 #undef VERSION
 
+/* With show message support */
+#undef WITH_SHOWMESSAGE
+
 /* Define for Solaris 2.5.1 so the uint8_t typedef from <sys/synch.h>,
    <pthread.h>, or <semaphore.h> is not used. If the typedef were allowed, the
    #define below would cause a syntax error. */

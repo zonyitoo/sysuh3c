@@ -722,6 +722,7 @@ ac_user_opts='
 enable_option_checking
 enable_silent_rules
 enable_dependency_tracking
+enable_showmessage
 '
       ac_precious_vars='build_alias
 host_alias
@@ -1355,6 +1356,7 @@ Optional Features:
                           do not reject slow dependency extractors
   --disable-dependency-tracking
                           speeds up one-time build
+Show messages from server
 
 Some influential environment variables:
   CXX         C++ compiler command
@@ -2981,7 +2983,7 @@ END
   fi
 fi
 
-ac_config_headers="$ac_config_headers config.h"
+ac_config_headers="$ac_config_headers src/config.h"
 
 ac_config_files="$ac_config_files Makefile src/Makefile"
 
@@ -5244,6 +5246,14 @@ fi
 done
 
 
+# Check whether --enable-showmessage was given.
+if test "${enable_showmessage+set}" = set; then :
+  enableval=$enable_showmessage;
+$as_echo "#define WITH_SHOWMESSAGE /**/" >>confdefs.h
+
+fi
+
+
 cat >confcache <<\_ACEOF
 # This file is a shell script that caches the results of configure
 # tests run on this system so they can be shared between configure
@@ -5973,7 +5983,7 @@ cat >>$CONFIG_STATUS <<\_ACEOF || ac_write_fail=1
 for ac_config_target in $ac_config_targets
 do
   case $ac_config_target in
-    "config.h") CONFIG_HEADERS="$CONFIG_HEADERS config.h" ;;
+    "src/config.h") CONFIG_HEADERS="$CONFIG_HEADERS src/config.h" ;;
     "Makefile") CONFIG_FILES="$CONFIG_FILES Makefile" ;;
     "src/Makefile") CONFIG_FILES="$CONFIG_FILES src/Makefile" ;;
     "depfiles") CONFIG_COMMANDS="$CONFIG_COMMANDS depfiles" ;;
