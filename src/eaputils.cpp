@@ -26,6 +26,7 @@
 namespace sysuh3c {
 
 EAPClient::EAPClient(const std::string& iface) {
+    // FIXME: AF_PACKET doesn't work in OSX
     if ((client_fd = socket(AF_PACKET, SOCK_RAW, htons(ETHERTYPE_PAE))) < 0) {
         perror("socket");
         abort();

@@ -27,3 +27,13 @@ If you get errors about missing `iconv.h` while compiling, you should install ic
 
 ## Another version for OpenWRT
 Now is avaliable on **Branch OpenWRT**
+
+## Known Bugs
+
+## TODOs
+
+* Port to Mac OS X
+
+## Thanks
+
+* [YaH3C](https://github.com/humiaozuzu/YaH3C)
