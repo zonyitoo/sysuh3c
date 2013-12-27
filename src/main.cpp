@@ -16,8 +16,8 @@
 using namespace std;
 using namespace sysuh3c;
 
-int lockfd = -1;
-static char *lockfname = nullptr;
+static int lockfd = -1;
+static const char *lockfname = "/tmp/sysuh3c.pid";
 
 static void interrupt_handler(int signo) {
     if (lockf(lockfd, F_ULOCK, 0) < 0) exit(EXIT_FAILURE);
@@ -43,14 +43,6 @@ void daemonize() {
     umask(027);
     if (chdir("/") == -1) {
         perror("chdir");
-        abort();
-    }
-
-    // Generate a tempfile name
-    char tmpfname_template[] = "sysuh3c_XXXXXX";
-    lockfname = mktemp(tmpfname_template);
-    if (lockfname) {
-        cerr << "Fail to generate a tempfile name" << endl;
         abort();
     }
 
