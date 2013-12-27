@@ -16,7 +16,8 @@
  * =====================================================================================
  */
 
-#pragma once
+#ifndef __EAPUTILS_H__
+#define __EAPUTILS_H__
 
 #include "eapdef.h"
 #include <array>
@@ -27,6 +28,8 @@
 #include <sys/time.h>
 #include <net/if.h>
 #include <netpacket/packet.h>
+
+namespace sysuh3c {
 
 class EAPClient {
     public:
@@ -42,8 +45,13 @@ class EAPClient {
         void set_timeout(__time_t timeval);
 
     private:
-        std::array<uint8_t, 14> ethernet_header;
+        static const unsigned ETHERNET_HEADER_SIZE = 14;
+        std::array<uint8_t, ETHERNET_HEADER_SIZE> ethernet_header;
 
         int client_fd;
         struct sockaddr_ll sock_addr;
 };
+
+}
+
+#endif

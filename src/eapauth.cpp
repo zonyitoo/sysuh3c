@@ -16,6 +16,8 @@
 #endif
 #include <iterator>
 
+namespace sysuh3c {
+
 EAPAuth::EAPAuth(const std::string& user_name, 
         const std::string& password, const std::string& iface)
     : eapclient(iface),
@@ -244,4 +246,6 @@ void EAPAuth::set_status_listener(const std::function<void(int)> &func) {
 
 std::string EAPAuth::get_user_name() const {
     return user_name;
+}
+
 }

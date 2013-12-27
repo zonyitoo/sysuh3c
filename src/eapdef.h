@@ -1,4 +1,5 @@
-#pragma once
+#ifndef __EAPDEF_H__
+#define __EAPDEF_H__
 
 #include <stdint.h>
 #include <arpa/inet.h>
@@ -8,6 +9,8 @@
 #include <vector>
 #include <memory>
 #include <iostream>
+
+namespace sysuh3c {
 
 // Constants 
 // References : http://tools.ietf.org/html/rfc3748
@@ -124,3 +127,7 @@ class EAPAuthFailed : public EAPAuthException {
         explicit EAPAuthFailed()
             : EAPAuthException("EAPAuth Failed!") {}
 };
+
+}
+
+#endif

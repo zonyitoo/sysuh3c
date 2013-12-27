@@ -18,6 +18,8 @@
 
 #include "eapdef.h"
 
+namespace sysuh3c {
+
 std::string eap_t::to_buf() const {
     std::string result;
     result.append(1, code);
@@ -52,4 +54,6 @@ uint16_t eapol_t::get_len() const {
     if (eap.get() != nullptr)
         return eap->get_len();
     return 0;
+}
+
 }

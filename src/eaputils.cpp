@@ -23,6 +23,8 @@
 #include <iostream>
 #include <cstdio>
 
+namespace sysuh3c {
+
 EAPClient::EAPClient(const std::string& iface) {
     if ((client_fd = socket(AF_PACKET, SOCK_RAW, htons(ETHERTYPE_PAE))) < 0) {
         perror("socket");
@@ -73,7 +75,7 @@ EAPClient::EAPClient(const std::string& iface) {
 
     // Generate ethernet header
     std::copy(PAE_GROUP_ADDR.begin(), PAE_GROUP_ADDR.end(), ethernet_header.begin());    
-    std::array<uint8_t, 14>::iterator itr = ethernet_header.begin();
+    auto itr = ethernet_header.begin();
     std::advance(itr, PAE_GROUP_ADDR.size());
     std::copy(mac_addr.begin(), mac_addr.end(), itr);
     uint16_t etype = htons(ETHERTYPE_PAE);
@@ -143,4 +145,6 @@ void EAPClient::set_timeout(__time_t tv_sec) {
     timeout.tv_sec = tv_sec;
     timeout.tv_usec = 0;
     setsockopt(client_fd, SOL_SOCKET, SO_RCVTIMEO, (char *) &timeout, sizeof(timeout));
+}
+
 }

@@ -1,4 +1,5 @@
-#pragma once
+#ifndef __EAPAUTH_H__
+#define __EAPAUTH_H__
 
 #include "eapdef.h"
 #include <functional>
@@ -7,6 +8,8 @@
 #include <vector>
 #include <array>
 #include "eaputils.h"
+
+namespace sysuh3c {
 
 class EAPAuth {
     public:
@@ -39,4 +42,6 @@ class EAPAuth {
         std::function<void(int statno)> status_notify;
 };
 
+}
 
+#endif
