@@ -4,12 +4,14 @@ A SYSU H3C Client in \*NIX
 
 ## Usage
 
-We use GNU Automake build system. Run following commands under the root directory.
+We use CMake Build System.
 
 ```bash
-$ ./configure --enable-showmessage
+$ mkdir build
+$ cd build
+$ cmake ..
 $ make
-$ sudo make install
+$ make install
 ```
 
 Then you get `sysuh3c` executable file in `/usr/local/bin`.

@@ -10,20 +10,25 @@
 #include <cstdio>
 #include <stdexcept>
 #include <stdarg.h>
-#include "config.h"
 #ifdef WITH_SHOWMESSAGE
 #   include <iconv.h>
 #endif
 #include <iterator>
 
-EAPAuth::EAPAuth(const std::string& user_name, 
-        const std::string& password, const std::string& iface)
+namespace sysuh3c {
+
+EAPAuth::EAPAuth(const std::string &user_name,
+                 const std::string &password, const std::string &iface)
     : eapclient(iface),
-    user_name(user_name), user_password(password),
-    display_promote([this] (const std::string& os) { std::cout << os << std::endl; }),
-    status_notify([this] (int8_t statno) { std::cout << "statno=" << statno << std::endl; })
+      user_name(user_name), user_password(password),
+    display_promote([this] (const std::string &os) {
+    std::cout << os << std::endl;
+}),
+status_notify([this] (int8_t statno) {
+    std::cout << "statno=" << statno << std::endl;
+})
 {
-    
+
 }
 
 EAPAuth::~EAPAuth() {
@@ -39,7 +44,7 @@ void EAPAuth::send_start() {
     try {
         eapclient << eapol_start;
     }
-    catch (const EAPAuthException& exp) {
+    catch (const EAPAuthException &exp) {
         throw EAPAuthException("send_start error");
     }
 }
@@ -49,11 +54,11 @@ void EAPAuth::send_logoff() {
     eapol_logoff.vers = EAPOL_VERSION;
     eapol_logoff.type = EAPOL_LOGOFF;
     eapol_logoff.eapol_len = eapol_logoff.get_len();
-    
+
     try {
         eapclient << eapol_logoff;
     }
-    catch (const EAPAuthException& exp) {
+    catch (const EAPAuthException &exp) {
         throw EAPAuthException("send_logoff error");
     }
 }
@@ -74,12 +79,12 @@ void EAPAuth::send_response_id(uint8_t packet_id) {
     try {
         eapclient << eapol_id;
     }
-    catch (const EAPAuthException& exp) {
+    catch (const EAPAuthException &exp) {
         throw EAPAuthException("send_response_id error");
     }
 }
 
-void EAPAuth::send_response_md5(uint8_t packet_id, const std::vector<uint8_t>& md5data) {
+void EAPAuth::send_response_md5(uint8_t packet_id, const std::vector<uint8_t> &md5data) {
     std::array<uint8_t, 16> chap;
     std::string pwd(user_password);
     if (pwd.length() < 16)
@@ -103,7 +108,7 @@ void EAPAuth::send_response_md5(uint8_t packet_id, const std::vector<uint8_t>& m
     try {
         eapclient << eapol_md5;
     }
-    catch (const EAPAuthException& exp) {
+    catch (const EAPAuthException &exp) {
         throw EAPAuthException("send_response_md5 error");
     }
 }
@@ -130,84 +135,84 @@ void EAPAuth::send_response_h3c(uint8_t packet_id) {
     try {
         eapclient << eapol_h3c;
     }
-    catch (const EAPAuthException& exp) {
+    catch (const EAPAuthException &exp) {
         throw EAPAuthException("send_response_h3c error");
     }
 }
 
-void EAPAuth::eap_handler(const eapol_t& eapol_packet) {
+void EAPAuth::eap_handler(const eapol_t &eapol_packet) {
     if (eapol_packet.type != EAPOL_EAPPACKET) {
         status_notify(EAPAUTH_UNKNOWN_PACKET_TYPE);
         return;
     }
 
     switch (eapol_packet.eap->code) {
-        case EAP_SUCCESS:
-            status_notify(EAPAUTH_EAP_SUCCESS);
-            eapclient.set_timeout(30);
+    case EAP_SUCCESS:
+        status_notify(EAPAUTH_EAP_SUCCESS);
+        eapclient.set_timeout(30);
+        break;
+    case EAP_FAILURE:
+        status_notify(EAPAUTH_EAP_FAILURE);
+        eapclient.set_timeout(5);
+        throw EAPAuthFailed();
+    case EAP_RESPONSE:
+        status_notify(EAPAUTH_EAP_RESPONSE);
+        break;
+    case EAP_REQUEST:
+    {
+        switch (eapol_packet.eap->reqtype) {
+        case EAP_TYPE_ID:
+            status_notify(EAPAUTH_AUTH_ID);
+            send_response_id(eapol_packet.eap->id);
             break;
-        case EAP_FAILURE:
-            status_notify(EAPAUTH_EAP_FAILURE);
-            eapclient.set_timeout(5);
-            throw EAPAuthFailed();
-        case EAP_RESPONSE:
-            status_notify(EAPAUTH_EAP_RESPONSE);
+        case EAP_TYPE_H3C:
+            status_notify(EAPAUTH_AUTH_H3C);
+            send_response_h3c(eapol_packet.eap->id);
             break;
-        case EAP_REQUEST:
-            {
-                switch (eapol_packet.eap->reqtype) {
-                    case EAP_TYPE_ID:
-                        status_notify(EAPAUTH_AUTH_ID);
-                        send_response_id(eapol_packet.eap->id);
-                        break;
-                    case EAP_TYPE_H3C:
-                        status_notify(EAPAUTH_AUTH_H3C);
-                        send_response_h3c(eapol_packet.eap->id);
-                        break;
-                    case EAP_TYPE_MD5:
-                        status_notify(EAPAUTH_AUTH_MD5);
-                        send_response_md5(eapol_packet.eap->id, eapol_packet.eap->data);
-                        break;
-                    default:
-                        status_notify(EAPAUTH_UNKNOWN_REQUEST_TYPE);
-                }
-            }
-            break;
-        case 10:
-#ifdef WITH_SHOWMESSAGE
-            {
-                iconv_t cd = iconv_open("UTF-8", "GBK");
-                if (cd == (iconv_t) -1) {
-                    perror("iconv_open");
-                    break;
-                }
-                size_t outleft = eapol_packet.eap->data.size() * 2;
-                char *buf = new char[outleft];
-                size_t inleft = eapol_packet.eap->data.size() + 1;
-                char *p_in = const_cast<char *>((const char *) eapol_packet.eap->data.data()) + 2;
-
-                char *p_out = buf;
-                while (inleft != 0) {
-                    size_t ret = iconv(cd, &p_in, &inleft, &p_out, &outleft);
-                    if (ret == (size_t) -1) {
-                        *p_out = *p_in;
-                        p_out ++;
-                        p_in ++;
-                        inleft --;
-                        outleft --;
-                    }
-                }
-
-                std::string convstr(buf);
-                convstr.append(p_in);
-                display_promote(std::move(convstr));
-
-                delete [] buf;
-            }
-#endif
+        case EAP_TYPE_MD5:
+            status_notify(EAPAUTH_AUTH_MD5);
+            send_response_md5(eapol_packet.eap->id, eapol_packet.eap->data);
             break;
         default:
-            status_notify(EAPAUTH_UNKNOWN_EAP_CODE);
+            status_notify(EAPAUTH_UNKNOWN_REQUEST_TYPE);
+        }
+    }
+    break;
+    case 10:
+#ifdef WITH_SHOWMESSAGE
+        {
+            iconv_t cd = iconv_open("UTF-8", "GBK");
+            if (cd == (iconv_t) - 1) {
+                perror("iconv_open");
+                break;
+            }
+            size_t outleft = eapol_packet.eap->data.size() * 2;
+            char *buf = new char[outleft];
+            size_t inleft = eapol_packet.eap->data.size() + 1;
+            char *p_in = const_cast<char *>((const char *) eapol_packet.eap->data.data()) + 2;
+
+            char *p_out = buf;
+            while (inleft != 0) {
+                size_t ret = iconv(cd, &p_in, &inleft, &p_out, &outleft);
+                if (ret == (size_t) - 1) {
+                    *p_out = *p_in;
+                    p_out ++;
+                    p_in ++;
+                    inleft --;
+                    outleft --;
+                }
+            }
+
+            std::string convstr(buf);
+            convstr.append(p_in);
+            display_promote(std::move(convstr));
+
+            delete [] buf;
+        }
+#endif
+        break;
+    default:
+        status_notify(EAPAUTH_UNKNOWN_EAP_CODE);
     }
 }
 
@@ -220,10 +225,10 @@ void EAPAuth::auth() {
         try {
             eap_handler(packet);
         }
-        catch (EAPAuthFailed& exp) {
+        catch (EAPAuthFailed &exp) {
             throw exp;
         }
-        catch (EAPAuthException& exp) {
+        catch (EAPAuthException &exp) {
             throw exp;
         }
     }
@@ -244,4 +249,6 @@ void EAPAuth::set_status_listener(const std::function<void(int)> &func) {
 
 std::string EAPAuth::get_user_name() const {
     return user_name;
+}
+
 }

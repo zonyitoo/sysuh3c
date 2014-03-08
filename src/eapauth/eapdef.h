@@ -9,18 +9,23 @@
 #include <memory>
 #include <iostream>
 
-// Constants 
+namespace sysuh3c {
+
+// Constants
 // References : http://tools.ietf.org/html/rfc3748
 static const uint16_t ETHERTYPE_PAE = 0x888e;
 
-typedef std::array<uint8_t, 6> mac_addr_t;
-static const mac_addr_t PAE_GROUP_ADDR = {{0x01, 0x80, 0xc2, 0x00, 0x00, 0x03}};
-static const mac_addr_t BROADCAST_ADDR = {{0xff, 0xff, 0xff, 0xff, 0xff, 0xff}};
-static const std::array<uint8_t, 32> VERSION_INFO = 
-                                        {{0x06, 0x07, 'b', 'j', 'Q', '7', 'S', 'E', '8', 'B',
-                                        'Z', '3', 'M', 'q', 'H', 'h', 's', '3', 'c', 'l', 
-                                        'M', 'r', 'e', 'g', 'c', 'D', 'Y', '3', 'Y', '=',
-                                        0x20, 0x20}};
+typedef uint8_t mac_addr_t[6];
+static const int ETHERHEADER_LENGTH = 14;
+static const mac_addr_t PAE_GROUP_ADDR = {0x01, 0x80, 0xc2, 0x00, 0x00, 0x03};
+static const mac_addr_t BROADCAST_ADDR = {0xff, 0xff, 0xff, 0xff, 0xff, 0xff};
+static const std::array<uint8_t, 32> VERSION_INFO = {
+    {   0x06, 0x07, 'b', 'j', 'Q', '7', 'S', 'E', '8', 'B',
+        'Z', '3', 'M', 'q', 'H', 'h', 's', '3', 'c', 'l',
+        'M', 'r', 'e', 'g', 'c', 'D', 'Y', '3', 'Y', '=',
+        0x20, 0x20
+    }
+};
 
 static const uint8_t EAPOL_VERSION = 1;
 static const uint8_t EAPOL_EAPPACKET = 0;
@@ -70,6 +75,12 @@ struct eapol_t {
     uint16_t get_len() const;
 };
 
+struct ethernet_header_t {
+    mac_addr_t dest;
+    mac_addr_t src[6];
+    uint16_t type;
+} __attribute__((packed));
+
 enum {
     EAPAUTH_UNKNOWN_REQUEST_TYPE = -3,
     EAPAUTH_UNKNOWN_PACKET_TYPE = -2,
@@ -114,13 +125,15 @@ inline std::string strstat(int statno) {
 }
 
 class EAPAuthException : public std::runtime_error {
-    public: 
-        explicit EAPAuthException(const std::string& what_arg)
-            : std::runtime_error(what_arg) {}
+public:
+    explicit EAPAuthException(const std::string &what_arg)
+        : std::runtime_error(what_arg) {}
 };
 
 class EAPAuthFailed : public EAPAuthException {
-    public:
-        explicit EAPAuthFailed()
-            : EAPAuthException("EAPAuth Failed!") {}
+public:
+    explicit EAPAuthFailed()
+        : EAPAuthException("EAPAuth Failed!") {}
 };
+
+}

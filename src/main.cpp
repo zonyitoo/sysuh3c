@@ -14,6 +14,7 @@
 #include <unistd.h>
 #include <syslog.h>
 using namespace std;
+using namespace sysuh3c;
 
 int lockfd = -1;
 static const char *lockfname = "/tmp/sysuh3c.lock";
@@ -30,7 +31,7 @@ void daemonize() {
     if (getpid() == 1) return;
     pid_t pid = fork();
     if (pid < 0) exit(EXIT_FAILURE);
-    
+
     if (pid > 0) exit(EXIT_SUCCESS);
 
     setsid();
@@ -68,7 +69,7 @@ int main(int argc, char **argv) {
         cerr << "You have to run the program as root" << endl;
         exit(EXIT_FAILURE);
     }
-    
+
     struct option arglist[] = {
         {"help", no_argument, NULL, 'h'},
         {"user", required_argument, NULL, 'u'},
@@ -78,40 +79,40 @@ int main(int argc, char **argv) {
         {"colorize", no_argument, NULL, 'c'},
         {NULL, 0, NULL, 0}
     };
-    
+
     string name, password, iface("eth0");
     bool daemon = false;
     bool color = false;
     char argval;
     while ((argval = getopt_long(argc, argv, "u:p:i:dhc", arglist, NULL)) != -1) {
         switch (argval) {
-            case 'h':
-                printf("Usage: sysuh3c [arg]\n"
-                        "   -h --help       print this screen\n"
-                        "   -u --user       user account\n"
-                        "   -p --password   password\n"
-                        "   -i --iface      network interface (default eth0)\n"
-                        "   -d --daemonize  daemonize\n"
-                        "   -c --colorize   colorize\n");
-                exit(EXIT_SUCCESS);
-            case 'u':
-                name = optarg;
-                break;
-            case 'p':
-                password = optarg;
-                break;
-            case 'i':
-                iface = optarg;
-                break;
-            case 'd':
-                daemon = true;
-                break;
-            case 'c':
-                color = true;
-                break;
-            default:
-                cout << "Argument Error. Unknown option." << endl;
-                return EXIT_FAILURE;
+        case 'h':
+            printf("Usage: sysuh3c [arg]\n"
+                   "   -h --help       print this screen\n"
+                   "   -u --user       user account\n"
+                   "   -p --password   password\n"
+                   "   -i --iface      network interface (default eth0)\n"
+                   "   -d --daemonize  daemonize\n"
+                   "   -c --colorize   colorize\n");
+            exit(EXIT_SUCCESS);
+        case 'u':
+            name = optarg;
+            break;
+        case 'p':
+            password = optarg;
+            break;
+        case 'i':
+            iface = optarg;
+            break;
+        case 'd':
+            daemon = true;
+            break;
+        case 'c':
+            color = true;
+            break;
+        default:
+            cout << "Argument Error. Unknown option." << endl;
+            return EXIT_FAILURE;
         }
     }
 
@@ -123,10 +124,10 @@ int main(int argc, char **argv) {
         char *pwd = getpass("Password: ");
         password = pwd;
     }
-    
+
     EAPAuth authservice(name, password, iface);
 
-    authservice.set_promote_listener([] (const string& msg) {
+    authservice.set_promote_listener([] (const string & msg) {
         string cpmsg(std::move(msg));
         cpmsg.erase(0, cpmsg.find_first_not_of("\t\n\r"));
         cpmsg.erase(cpmsg.find_last_not_of("\t\n\r") + 1);
@@ -137,21 +138,21 @@ int main(int argc, char **argv) {
                 syslog(LOG_INFO, "%s", cpmsg.c_str());
         }
     });
-    
+
     bool haslogin = false;
     int autoretry_count = 5;
 
-    authservice.set_status_listener([&] (int8_t statno) { 
+    authservice.set_status_listener([&] (int8_t statno) {
         if (!is_daemon) {
             if (color)
-                cout << "\033[01;" << 30 + statno << "m[" 
-                    << name << ":" << iface << "] " << strstat(statno) << "\033[0m" << endl;
+                cout << "\033[01;" << 30 + statno << "m["
+                     << name << ":" << iface << "] " << strstat(statno) << "\033[0m" << endl;
             else
                 cout << "[" << name << ":" << iface << "] " << strstat(statno) << endl;
         }
         else {
             syslog(LOG_INFO, "[%s:%s] %s", name.c_str(), iface.c_str(),
-                strstat(statno).c_str());
+                   strstat(statno).c_str());
         }
 
         switch (statno) {
@@ -179,11 +180,11 @@ int main(int argc, char **argv) {
         try {
             authservice.auth();
         }
-        catch (const EAPAuthFailed& expt) {
-            if (!haslogin) 
+        catch (const EAPAuthFailed &expt) {
+            if (!haslogin)
                 return EXIT_FAILURE;
         }
-        catch (const EAPAuthException& expt) {
+        catch (const EAPAuthException &expt) {
             cerr << expt.what() << endl;
         }
         sleep(2);
