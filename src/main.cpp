@@ -16,8 +16,8 @@
 using namespace std;
 using namespace sysuh3c;
 
-int lockfd = -1;
-static const char *lockfname = "/tmp/sysuh3c.lock";
+static int lockfd = -1;
+static const char *lockfname = "/tmp/sysuh3c.pid";
 
 static void interrupt_handler(int signo) {
     if (lockf(lockfd, F_ULOCK, 0) < 0) exit(EXIT_FAILURE);
@@ -41,7 +41,10 @@ void daemonize() {
     close(fileno(stderr));
 
     umask(027);
-    chdir("/");
+    if (chdir("/") == -1) {
+        perror("chdir");
+        abort();
+    }
 
     lockfd = open(lockfname, O_RDWR | O_CREAT, 0640);
     if (lockfd < 0) exit(EXIT_FAILURE);
@@ -49,7 +52,10 @@ void daemonize() {
 
     char pidstr[128] = {0};
     sprintf(pidstr, "%d\n", getpid());
-    write(lockfd, pidstr, strlen(pidstr));
+    if (write(lockfd, pidstr, strlen(pidstr)) == -1) {
+        perror("write");
+        abort();
+    }
 
     openlog("sysuh3c", LOG_CONS, LOG_USER);
 
@@ -63,7 +69,7 @@ void daemonize() {
     is_daemon = true;
 }
 
-int main(int argc, char **argv) {
+int main(int argc, char *const argv[]) {
 
     if (geteuid() != 0) {
         cerr << "You have to run the program as root" << endl;
@@ -171,7 +177,10 @@ int main(int argc, char **argv) {
     FILE *fp = fopen(lockfname, "r");
     if (fp != nullptr) {
         pid_t pid;
-        fscanf(fp, "%d", &pid);
+        if (fscanf(fp, "%d", &pid) == EOF) {
+            perror("fscanf");
+            abort();
+        }
         int ret = kill(pid, SIGINT);
         fclose(fp);
     }

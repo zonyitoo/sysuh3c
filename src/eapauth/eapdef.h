@@ -1,4 +1,5 @@
-#pragma once
+#ifndef __EAPDEF_H__
+#define __EAPDEF_H__
 
 #include <stdint.h>
 #include <arpa/inet.h>
@@ -137,3 +138,5 @@ public:
 };
 
 }
+
+#endif

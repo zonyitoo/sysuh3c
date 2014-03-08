@@ -56,5 +56,4 @@ uint16_t eapol_t::get_len() const {
     return 0;
 }
 
-
 }
