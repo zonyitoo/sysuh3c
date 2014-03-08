@@ -34,7 +34,7 @@ Now is avaliable on **Branch OpenWRT**
 
 ## TODOs
 
-* Port to Mac OS X
+* <del>Port to Mac OS X</del> Require for testing.
 
 ## Thanks
 
