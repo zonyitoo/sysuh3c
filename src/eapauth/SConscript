@@ -1,0 +1,10 @@
+env = DefaultEnvironment()
+env.AppendUnique(CCFLAGS=['-O2', '-std=c++11'])
+
+env.StaticLibrary('eapauth', 
+    [
+        'eapauth.cpp', 
+        'eapdef.cpp', 
+        'eaputils.cpp'
+    ]
+)

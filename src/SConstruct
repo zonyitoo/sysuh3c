@@ -1,0 +1,36 @@
+env = DefaultEnvironment()
+env.Append(CCFLAGS=['-O2', '-std=c++11', '-I./eapauth'])
+
+LIBS = [
+    'eapauth'
+]
+
+conf = Configure(env)
+if conf.CheckLibWithHeader('iconv', 'iconv.h', 'cxx'):
+    conf.env.AppendUnique(CPPDEFINES=['WITH_SHOWMESSAGE'])
+    LIBS.append('iconv')
+env = conf.Finish()
+
+SConscript([
+    'eapauth/SConscript',
+])
+
+sysuh3c = env.Program('sysuh3c', ['main.cpp'],
+    LIBS=LIBS, LIBPATH='./eapauth')
+
+AddOption(
+    '--prefix',
+    dest='prefix',
+    type='string',
+    nargs=1,
+    action='store',
+    metavar='DIR',
+    help='Installation prefix'
+)
+
+prefix = GetOption('prefix')
+if prefix is None:
+    prefix = '/usr/local/bin'
+env.Install(prefix, sysuh3c)
+
+env.Alias('install', prefix)

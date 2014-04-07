@@ -4,19 +4,15 @@ A SYSU H3C Client in \*NIX
 
 ## Usage
 
-We use CMake Build System.
+`sysuh3c` uses `SCons` build system.
 
 ```bash
-$ mkdir build
-$ cd build
-$ cmake ..
-$ make
-$ make install
+$ cd src
+$ scons -Q
+$ scons install
 ```
 
 Then you get `sysuh3c` executable file in `/usr/local/bin`.
-
-If you get errors about missing `iconv.h` while compiling, you should install iconv library or remove `--enable-showmessage`.
 
 ```bash
 -h --help        print help screen
