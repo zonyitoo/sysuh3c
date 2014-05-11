@@ -37,7 +37,7 @@ EAPClient::EAPClient(const std::string &iface) {
 
     mac_addr_t mac_addr;
 
-    #ifdef SYSTEM_LINUX
+#ifdef SYSTEM_LINUX
     if ((client_fd = socket(AF_PACKET, SOCK_RAW, htons(ETHERTYPE_PAE))) < 0) {
         perror("socket");
         abort();
@@ -83,8 +83,8 @@ EAPClient::EAPClient(const std::string &iface) {
         abort();
     }
 
-    #elif SYSTEM_DARWIN // FOR Darwin
-
+#elif SYSTEM_DARWIN // FOR Darwin
+    
     if ((bpf_fd = open("/dev/bpf1", O_RDWR)) < 0) {
         perror("open");
         abort();
@@ -138,7 +138,9 @@ EAPClient::EAPClient(const std::string &iface) {
 
     this->timeout.tv_sec = 30;
     this->timeout.tv_usec = 0;
-    #endif
+#else
+#error SYSUH3C doesn't support your platform.
+#endif
 
     // Generate ethernet header
 

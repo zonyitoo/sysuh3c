@@ -1,6 +1,12 @@
 env = DefaultEnvironment()
 env.AppendUnique(CCFLAGS=['-O2', '-std=c++11'])
 
+import platform
+if platform.system() == "Darwin":
+    env.AppendUnique(CPPDEFINES=['SYSTEM_DARWIN'])
+elif platform.system() == "Linux":
+    env.AppendUnique(CPPDEFINES=['SYSTEM_LINUX'])
+
 env.StaticLibrary('eapauth', 
     [
         'eapauth.cpp', 
