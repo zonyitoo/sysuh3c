@@ -29,13 +29,13 @@ endef
 
 ## Packages
 
- * `sysuh3c_0.2-1_ar71xx.ipk` :  SYSU H3C comand line tool (without luci web configuration page) for ar7xx based router.
+ * `sysuh3c_0.2-1_ar71xx.ipk` :  SYSU H3C comand line tool (without luci web configuration page) for ar71xx based router.
  * `sysuh3c_0.2-1_ramips.ipk` :  SYSU H3C comand line tool (without luci web configuration page) for ramips based router.
- * `luci-app-sysuh3c_0.2-1_all.ipk` : LuCI Web Configuration Page for SYSU H3C (for all architecture).
+ * `luci-app-sysuh3c_0.2-1_all.ipk` : LuCI web configuration page for SYSU H3C (for all architecture).
 
 ## Install
 
- * Install the sysuh3c package. (skip if you haveinstalled)
+ * Install the sysuh3c package. (skip if you have installed)
  * Install the luci-app-sysuh3c package.
  * You have to restart the router.
  
@@ -43,7 +43,8 @@ endef
 
 ### Web Configuration
 
- * After installed and restarted, you find the sysh3c web configuration page in `Network -> SYS H3c`.
+ * After installing and restarting, you can find the sysh3c web configuration page in `Network -> SYS H3c`.
+ * Configure the sysuh3c.
  * Save & Apply.
  
 ### sysuh3c
