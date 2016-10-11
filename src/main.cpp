@@ -3,7 +3,6 @@
 #include <cstdlib>
 #include <cstdio>
 #include <string>
-#include <getopt.h>
 #include <iostream>
 #include <signal.h>
 #include <fcntl.h>
@@ -69,6 +68,69 @@ void daemonize() {
     is_daemon = true;
 }
 
+// we use a new function to parse argument instead of getopt_long, which will
+// cause problem when your password include '-'.
+namespace get_opt {
+
+  int optind = 1;
+  const char *optarg;
+
+  bool check_opt(const char* opt) {
+  	if (opt[0] != '-') {
+  		return false;
+  	}
+  	else if (opt[1] != '-') {
+  		if (strlen(opt) == 2)
+  			return true;
+  		else
+  			return false;
+  	}
+  }
+
+  bool process_arg(const char* optstring, const char* opt, char &opt_name, bool &has_arg) {
+  	const char _opt = opt[1];
+  	size_t length = strlen(optstring);
+  	for (size_t i = 0; i < length; ++i) {
+  		if (optstring[i] == _opt) {
+  			opt_name = optstring[i];
+  			if (i + 1 < length && optstring[i + 1] == ':')
+  				has_arg = true;
+  			else
+  				has_arg = false;
+  			return true;
+  		}
+  	}
+  	opt_name = _opt;
+  	return false;
+  }
+
+  int getopt(int argc, char* const* argv, const char* optstring) {
+  	char argval;
+  	bool has_arg;
+  	if (optind == argc)
+  		return -1;
+  	if (check_opt(argv[optind])) {
+  		if (process_arg(optstring, argv[optind], argval, has_arg)) {
+  			optind++;
+  			if (has_arg) {
+  				optarg = argv[optind];
+  				optind++;
+  			}
+  			return argval;
+  		}
+  		else {
+  			optind = argc;
+  			return argval;
+  		}
+  	}
+  	else {
+  		optind = argc;
+  		return 0;
+  	}
+  }
+
+}
+
 int main(int argc, char *const argv[]) {
 
     if (geteuid() != 0) {
@@ -76,30 +138,25 @@ int main(int argc, char *const argv[]) {
         exit(EXIT_FAILURE);
     }
 
-    struct option arglist[] = {
-        {"help", no_argument, NULL, 'h'},
-        {"user", required_argument, NULL, 'u'},
-        {"password", required_argument, NULL, 'p'},
-        {"iface", optional_argument, NULL, 'i'},
-        {"daemonize", no_argument, NULL, 'd'},
-        {"colorize", no_argument, NULL, 'c'},
-        {NULL, 0, NULL, 0}
-    };
-
     string name, password, iface("eth0");
     bool daemon = false;
     bool color = false;
     char argval;
-    while ((argval = getopt_long(argc, argv, "u:p:i:dhc", arglist, NULL)) != -1) {
+
+    using get_opt::optarg;
+    using get_opt::optind;
+    using get_opt::getopt;
+    
+    while ((argval = getopt(argc, argv, "u:p:i:dhc")) != -1) {
         switch (argval) {
         case 'h':
             printf("Usage: sysuh3c [arg]\n"
-                   "   -h --help       print this screen\n"
-                   "   -u --user       user account\n"
-                   "   -p --password   password\n"
-                   "   -i --iface      network interface (default eth0)\n"
-                   "   -d --daemonize  daemonize\n"
-                   "   -c --colorize   colorize\n");
+                   "   -h       print this screen\n"
+                   "   -u       user account\n"
+                   "   -p       password\n"
+                   "   -i       network interface (default eth0)\n"
+                   "   -d       daemonize\n"
+                   "   -c       colorize\n");
             exit(EXIT_SUCCESS);
         case 'u':
             name = optarg;
