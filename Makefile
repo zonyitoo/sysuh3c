@@ -11,7 +11,7 @@ include $(INCLUDE_DIR)/package.mk
 define Package/$(PKG_NAME)
         SECTION:=utils
         CATEGORY:=Utilities
-        DEPENDS:=+libc +libgcc +libuci
+        DEPENDS:=+libc +libgcc +libuci +libopenssl
         TITLE:=sysuh3c
         PKGARCH:=ramips
         MAINTAINER:=zonyitoo
