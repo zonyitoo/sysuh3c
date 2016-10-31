@@ -30,6 +30,7 @@
 #include <stdio.h>
 #include <stdarg.h>
 #include <syslog.h>
+#include <openssl/md5.h>
 
 int send_start(const eapauth_t *user);
 int send_logoff(const eapauth_t *user);
@@ -267,18 +268,24 @@ int send_response_h3c(const eapauth_t *user, uint8_t packet_id) {
 
 int send_response_md5(const eapauth_t *user, uint8_t packet_id, const uint8_t *md5data) {
     uint8_t chap[16] = {0};
-    size_t i;
+    uint8_t chapbuf[128] = {0}; // id + password + md5data
+    size_t chapbuflen, passwordlen;
     uint8_t packetbuf[128] = {0};
 
     if (user == NULL || md5data == NULL) return EAPAUTH_ERR;
 
-    strcpy(chap, user->password);
-    for (i = 0; i < 16; ++ i)
-        chap[i] ^= md5data[i];
+    passwordlen = strlen(user->password);
+    chapbuflen = 1 + passwordlen + 16;
 
-    packetbuf[0] = sizeof(chap);
-    memcpy(packetbuf + 1, chap, sizeof(chap));
-    strcpy(packetbuf + sizeof(chap) + 1, user->name);
+    chapbuf[0] = packet_id;
+    memcpy(chapbuf + 1, user->password, passwordlen);
+    memcpy(chapbuf + 1 + passwordlen, md5data, 16);
+
+    MD5(chapbuf, chapbuflen, chap); // MD5(id + password + md5data) -> chap
+
+    packetbuf[0] = sizeof(chap); // Value-Size
+    memcpy(packetbuf + 1, chap, 16); // MD5 Area
+    strcpy(packetbuf + 1 + sizeof(chap), user->name); // Username
 
     eapol_t eap_md5;
     eap_md5.vers = EAPOL_VERSION;
