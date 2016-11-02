@@ -81,16 +81,17 @@ int main(int argc, char *const argv[]) {
         {"user", required_argument, NULL, 'u'},
         {"password", required_argument, NULL, 'p'},
         {"iface", optional_argument, NULL, 'i'},
+        {"method", optional_argument, NULL, 'm'},
         {"daemonize", no_argument, NULL, 'd'},
         {"colorize", no_argument, NULL, 'c'},
         {NULL, 0, NULL, 0}
     };
 
-    string name, password, iface("eth0");
+    string name, password, iface("eth0"), method("0");
     bool daemon = false;
     bool color = false;
     char argval;
-    while ((argval = getopt_long(argc, argv, "u:p:i:dhc", arglist, NULL)) != -1) {
+    while ((argval = getopt_long(argc, argv, "u:p:i:m:dhc", arglist, NULL)) != -1) {
         switch (argval) {
         case 'h':
             printf("Usage: sysuh3c [arg]\n"
@@ -98,6 +99,9 @@ int main(int argc, char *const argv[]) {
                    "   -u --user       user account\n"
                    "   -p --password   password\n"
                    "   -i --iface      network interface (default eth0)\n"
+                   "   -m --method     EAP-MD5 CHAP method (default 0)\n"
+                   "                       0 = xor\n"
+                   "                       1 = md5\n"
                    "   -d --daemonize  daemonize\n"
                    "   -c --colorize   colorize\n");
             exit(EXIT_SUCCESS);
@@ -109,6 +113,9 @@ int main(int argc, char *const argv[]) {
             break;
         case 'i':
             iface = optarg;
+            break;
+        case 'm':
+            method = optarg;
             break;
         case 'd':
             daemon = true;
@@ -130,8 +137,12 @@ int main(int argc, char *const argv[]) {
         char *pwd = getpass("Password: ");
         password = pwd;
     }
+    if (method != "0" && method != "1") {
+        cerr <<  "Argument Error! Method can only be 0 or 1." << endl;
+        return EXIT_FAILURE;
+    }
 
-    EAPAuth authservice(name, password, iface);
+    EAPAuth authservice(name, password, iface, method);
 
     authservice.set_promote_listener([] (const string & msg) {
         string cpmsg(std::move(msg));

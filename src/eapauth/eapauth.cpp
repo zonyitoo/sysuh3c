@@ -1,6 +1,7 @@
 #include "eapdef.h"
 #include "eapauth.h"
 #include "eaputils.h"
+#include "md5.h"
 #include <sys/socket.h>
 #include <sys/ioctl.h>
 #include <sys/time.h>
@@ -18,9 +19,10 @@
 namespace sysuh3c {
 
 EAPAuth::EAPAuth(const std::string &user_name,
-                 const std::string &password, const std::string &iface)
+                 const std::string &password, const std::string &iface,
+                 const std::string &method)
     : eapclient(iface),
-      user_name(user_name), user_password(password),
+      user_name(user_name), user_password(password), md5_method(method),
     display_promote([this] (const std::string &os) {
     std::cout << os << std::endl;
 }),
@@ -87,10 +89,26 @@ void EAPAuth::send_response_id(uint8_t packet_id) {
 void EAPAuth::send_response_md5(uint8_t packet_id, const std::vector<uint8_t> &md5data) {
     std::array<uint8_t, 16> chap;
     std::string pwd(user_password);
-    if (pwd.length() < 16)
-        pwd.append(16 - pwd.length(), '\0');
-    for (size_t i = 0; i < chap.size(); ++ i)
-        chap[i] = pwd[i] ^ md5data[i];
+    std::vector<uint8_t> chapbuf; 
+    size_t chapbuflen = 1 + pwd.length() + 16;
+
+    if (md5_method == "0") {
+        // xor(password, md5data)
+        if (pwd.length() < 16)
+            pwd.append(16 - pwd.length(), '\0');
+        for (size_t i = 0; i < chap.size(); ++ i)
+            chap[i] = pwd[i] ^ md5data[i];
+    } else {
+        // md5(id + password + md5data)
+        chapbuf.push_back(packet_id);
+        chapbuf.insert(chapbuf.end(), pwd.begin(), pwd.end());
+        chapbuf.insert(chapbuf.end(), md5data.begin(), md5data.end());
+
+        MD5_CTX context;
+        MD5_Init(&context);
+        MD5_Update(&context, &chapbuf[0], chapbuflen);
+        MD5_Final(&chap[0], &context);
+    }
 
     eapol_t eapol_md5;
     eapol_md5.vers = EAPOL_VERSION;
@@ -104,7 +122,6 @@ void EAPAuth::send_response_md5(uint8_t packet_id, const std::vector<uint8_t> &m
     eapol_md5.eap->data.insert(eapol_md5.eap->data.end(), user_name.begin(), user_name.end());
     eapol_md5.eap->eap_len = eapol_md5.eap->get_len();
     eapol_md5.eapol_len = eapol_md5.get_len();
-
     try {
         eapclient << eapol_md5;
     }
@@ -142,10 +159,9 @@ void EAPAuth::send_response_h3c(uint8_t packet_id) {
 
 void EAPAuth::eap_handler(const eapol_t &eapol_packet) {
     if (eapol_packet.type != EAPOL_EAPPACKET) {
-        status_notify(EAPAUTH_UNKNOWN_PACKET_TYPE);
+        //status_notify(EAPAUTH_UNKNOWN_PACKET_TYPE);
         return;
     }
-
     switch (eapol_packet.eap->code) {
     case EAP_SUCCESS:
         status_notify(EAPAUTH_EAP_SUCCESS);

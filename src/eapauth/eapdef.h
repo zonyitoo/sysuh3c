@@ -78,7 +78,7 @@ struct eapol_t {
 
 struct ethernet_header_t {
     mac_addr_t dest;
-    mac_addr_t src[6];
+    mac_addr_t src;
     uint16_t type;
 } __attribute__((packed));
 

@@ -59,6 +59,7 @@ private:
     struct sockaddr_ll sock_addr;
     #elif SYSTEM_DARWIN
     struct sockaddr_dl sock_addr;
+    mac_addr_t mac_addr;
     int bpf_fd;
     struct timeval timeout;
     #endif
