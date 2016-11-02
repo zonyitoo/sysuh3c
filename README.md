@@ -34,6 +34,9 @@ endef
 -u --user        user account
 -p --password    password
 -i --iface       network interface (default is eth0)
+-m --method      EAP-MD5 CHAP method (default 0)
+                    0 = xor
+                    1 = md5
 -d --daemonize   daemonize
 -c --colorize    colorize
 -l --logoff      logoff

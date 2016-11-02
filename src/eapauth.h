@@ -24,7 +24,7 @@ enum __eapauth_ret {
     EAPAUTH_UNKNOWN
 };
 
-int eapauth_init(eapauth_t *user, const char *iface);
+int eapauth_init(eapauth_t *user, const char *iface, char method);
 int eapauth_auth(const eapauth_t *user);
 int eapauth_logoff(const eapauth_t *user);
 
