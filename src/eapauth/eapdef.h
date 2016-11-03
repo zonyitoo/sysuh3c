@@ -96,6 +96,11 @@ enum {
     EAPAUTH_AUTH_MD5
 };
 
+enum eap_method {
+    EAP_METHOD_XOR,
+    EAP_METHOD_MD5
+};
+
 inline std::string strstat(int statno) {
     switch (statno) {
     case EAPAUTH_UNKNOWN_REQUEST_TYPE:

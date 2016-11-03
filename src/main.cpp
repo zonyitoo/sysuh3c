@@ -87,7 +87,8 @@ int main(int argc, char *const argv[]) {
         {NULL, 0, NULL, 0}
     };
 
-    string name, password, iface("eth0"), method("0");
+    string name, password, iface("eth0");
+    eap_method method = EAP_METHOD_XOR;
     bool daemon = false;
     bool color = false;
     char argval;
@@ -99,9 +100,7 @@ int main(int argc, char *const argv[]) {
                    "   -u --user       user account\n"
                    "   -p --password   password\n"
                    "   -i --iface      network interface (default eth0)\n"
-                   "   -m --method     EAP-MD5 CHAP method (default 0)\n"
-                   "                       0 = xor\n"
-                   "                       1 = md5\n"
+                   "   -m --method     EAP-MD5 CHAP method [xor/md5] (default xor)\n"
                    "   -d --daemonize  daemonize\n"
                    "   -c --colorize   colorize\n");
             exit(EXIT_SUCCESS);
@@ -115,7 +114,14 @@ int main(int argc, char *const argv[]) {
             iface = optarg;
             break;
         case 'm':
-            method = optarg;
+            if (string(optarg) == "xor")
+                method = EAP_METHOD_XOR;
+            else if (string(optarg) == "md5")
+                method = EAP_METHOD_MD5;
+            else {
+                cerr <<  "Argument Error! Method can only be xor or md5." << endl;
+                return EXIT_FAILURE;
+            }
             break;
         case 'd':
             daemon = true;
@@ -136,10 +142,6 @@ int main(int argc, char *const argv[]) {
     if (password.empty()) {
         char *pwd = getpass("Password: ");
         password = pwd;
-    }
-    if (method != "0" && method != "1") {
-        cerr <<  "Argument Error! Method can only be 0 or 1." << endl;
-        return EXIT_FAILURE;
     }
 
     EAPAuth authservice(name, password, iface, method);

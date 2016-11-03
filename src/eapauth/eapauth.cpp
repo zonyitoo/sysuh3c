@@ -20,7 +20,7 @@ namespace sysuh3c {
 
 EAPAuth::EAPAuth(const std::string &user_name,
                  const std::string &password, const std::string &iface,
-                 const std::string &method)
+                 eap_method method)
     : eapclient(iface),
       user_name(user_name), user_password(password), md5_method(method),
     display_promote([this] (const std::string &os) {
@@ -92,22 +92,24 @@ void EAPAuth::send_response_md5(uint8_t packet_id, const std::vector<uint8_t> &m
     std::vector<uint8_t> chapbuf; 
     size_t chapbuflen = 1 + pwd.length() + 16;
 
-    if (md5_method == "0") {
-        // xor(password, md5data)
-        if (pwd.length() < 16)
-            pwd.append(16 - pwd.length(), '\0');
-        for (size_t i = 0; i < chap.size(); ++ i)
-            chap[i] = pwd[i] ^ md5data[i];
-    } else {
-        // md5(id + password + md5data)
-        chapbuf.push_back(packet_id);
-        chapbuf.insert(chapbuf.end(), pwd.begin(), pwd.end());
-        chapbuf.insert(chapbuf.end(), md5data.begin(), md5data.end());
+    switch (md5_method) {
+        case EAP_METHOD_XOR: // xor(password, md5data)
+            if (pwd.length() < 16)
+                pwd.append(16 - pwd.length(), '\0');
+            for (size_t i = 0; i < chap.size(); ++ i)
+                chap[i] = pwd[i] ^ md5data[i];
+            break;
+        case EAP_METHOD_MD5: // MD5(id + password + md5data)
+        default:
+            chapbuf.push_back(packet_id);
+            chapbuf.insert(chapbuf.end(), pwd.begin(), pwd.end());
+            chapbuf.insert(chapbuf.end(), md5data.begin(), md5data.end());
 
-        MD5_CTX context;
-        MD5_Init(&context);
-        MD5_Update(&context, &chapbuf[0], chapbuflen);
-        MD5_Final(&chap[0], &context);
+            MD5_CTX context;
+            MD5_Init(&context);
+            MD5_Update(&context, &chapbuf[0], chapbuflen);
+            MD5_Final(&chap[0], &context);
+            break;
     }
 
     eapol_t eapol_md5;
