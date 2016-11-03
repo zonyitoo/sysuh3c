@@ -78,7 +78,7 @@ struct eapol_t {
 
 struct ethernet_header_t {
     mac_addr_t dest;
-    mac_addr_t src[6];
+    mac_addr_t src;
     uint16_t type;
 } __attribute__((packed));
 
@@ -94,6 +94,11 @@ enum {
     EAPAUTH_AUTH_ID,
     EAPAUTH_AUTH_H3C,
     EAPAUTH_AUTH_MD5
+};
+
+enum eap_method {
+    EAP_METHOD_XOR,
+    EAP_METHOD_MD5
 };
 
 inline std::string strstat(int statno) {
