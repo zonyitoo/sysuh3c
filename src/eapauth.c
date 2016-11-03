@@ -27,12 +27,10 @@
 #include "eapdef.h"
 #include "eapauth.h"
 #include "eaputils.h"
+#include "md5.h"
 #include <stdio.h>
 #include <stdarg.h>
 #include <syslog.h>
-#include <openssl/md5.h>
-
-char md5_method = '0';
 
 int send_start(const eapauth_t *user);
 int send_logoff(const eapauth_t *user);
@@ -61,7 +59,7 @@ void display_promote_func(int priority, const char *format, ...) {
 static void (*status_notify)(int) = status_notify_func;
 static void (*display_promote)(int, const char *, ...) = display_promote_func;
 
-int eapauth_init(eapauth_t *user, const char *iface, char method) {
+int eapauth_init(eapauth_t *user, const char *iface, eap_method method) {
     uint8_t mac_addr_buf[6] = {0};
     struct timeval timeout;
     struct ifreq ifr; 
@@ -116,7 +114,7 @@ int eapauth_init(eapauth_t *user, const char *iface, char method) {
 
     get_ethernet_header(mac_addr_buf, PAE_GROUP_ADDR, ETHERTYPE_PAE, user->ethernet_header);
 
-    md5_method = method;
+    user->method = method;
 
     return EAPAUTH_OK;
 }
@@ -278,13 +276,13 @@ int send_response_md5(const eapauth_t *user, uint8_t packet_id, const uint8_t *m
 
     if (user == NULL || md5data == NULL) return EAPAUTH_ERR;
 
-    switch(md5_method) {
-        case '0': // xor(password, md5data)
+    switch(user->method) {
+        case EAP_METHOD_XOR: // xor(password, md5data)
             strcpy(chap, user->password);
             for (i = 0; i < 16; ++ i)
                 chap[i] ^= md5data[i];
             break;
-        case '1': // MD5(id + password + md5data)
+        case EAP_METHOD_MD5: // MD5(id + password + md5data)
         default:
             passwordlen = strlen(user->password);
             chapbuflen = 1 + passwordlen + 16;
@@ -293,7 +291,10 @@ int send_response_md5(const eapauth_t *user, uint8_t packet_id, const uint8_t *m
             memcpy(chapbuf + 1, user->password, passwordlen);
             memcpy(chapbuf + 1 + passwordlen, md5data, 16);
 
-            MD5(chapbuf, chapbuflen, chap);
+            MD5_CTX context;
+            MD5_Init(&context);
+            MD5_Update(&context, chapbuf, chapbuflen);
+            MD5_Final(chap, &context);
             break;
     }
 

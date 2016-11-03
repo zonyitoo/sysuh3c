@@ -49,6 +49,11 @@ enum __eap_type {
     EAP_TYPE_H3C = 7                        // H3C eap packet (used for SYSU east campus)
 };
 
+typedef enum __eap_method {
+    EAP_METHOD_XOR,
+    EAP_METHOD_MD5
+} eap_method;
+
 typedef struct __eap_t {
     uint8_t code;
     uint8_t id;

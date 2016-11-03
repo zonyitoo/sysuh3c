@@ -167,9 +167,7 @@ static const char usage_str[] = "Usage: sysuh3c [arg]\n"
                 "   -u --user       user account\n"
                 "   -p --password   password\n"
                 "   -i --iface      network interface (default eth0)\n"
-                "   -m --method     EAP-MD5 CHAP method (default 0)\n"
-                "                       0 = xor\n"
-                "                       1 = md5\n"
+                "   -m --method     EAP-MD5 CHAP method [xor/md5] (default xor)\n"
                 "   -d --daemonize  daemonize\n"
                 "   -l --logoff     logoff\n"
                 "   -c --colorize   colorize\n";
@@ -179,7 +177,8 @@ int main(int argc, char **argv) {
 
     int ret;
     char iface[8] = {0};
-    char argval, method = '0';
+    char argval;
+    eap_method method = EAP_METHOD_XOR;
     FILE *fp = NULL;
 
     _Bool toLogoff = 0;
@@ -218,11 +217,14 @@ int main(int argc, char **argv) {
                 strcpy(iface, optarg);
                 break;
             case 'm':
-                if (strlen(optarg) > 1) {
-                    display_msg(LOG_ERR, "method is too long");
+                if (strcmp(optarg, "xor") == 0)
+                    method = EAP_METHOD_XOR;
+                else if (strcmp(optarg, "md5") == 0)
+                    method = EAP_METHOD_MD5;
+                else {
+                    display_msg(LOG_ERR, "Argument Error. Method can only be xor or md5");
                     exit(EXIT_FAILURE);
                 }
-                method = optarg[0];
                 break;
             case 'd':
                 toDaemon = 1;
@@ -259,11 +261,6 @@ int main(int argc, char **argv) {
             strcpy(iface, "eth0");
         uci_free_context(uci_ctx);
         free(expr);
-    }
-
-    if (method != '0' && method != '1') {
-        display_msg(LOG_ERR, "Argument Error. Method can only be 0 or 1");
-        exit(EXIT_FAILURE);
     }
 
     if (eapauth_init(&eapauth, iface, method) != 0)
