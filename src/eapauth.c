@@ -27,10 +27,10 @@
 #include "eapdef.h"
 #include "eapauth.h"
 #include "eaputils.h"
+#include "md5.h"
 #include <stdio.h>
 #include <stdarg.h>
 #include <syslog.h>
-#include <openssl/md5.h>
 
 int send_start(const eapauth_t *user);
 int send_logoff(const eapauth_t *user);
@@ -59,7 +59,7 @@ void display_promote_func(int priority, const char *format, ...) {
 static void (*status_notify)(int) = status_notify_func;
 static void (*display_promote)(int, const char *, ...) = display_promote_func;
 
-int eapauth_init(eapauth_t *user, const char *iface) {
+int eapauth_init(eapauth_t *user, const char *iface, eap_method method) {
     uint8_t mac_addr_buf[6] = {0};
     struct timeval timeout;
     struct ifreq ifr; 
@@ -113,6 +113,8 @@ int eapauth_init(eapauth_t *user, const char *iface) {
     }
 
     get_ethernet_header(mac_addr_buf, PAE_GROUP_ADDR, ETHERTYPE_PAE, user->ethernet_header);
+
+    user->method = method;
 
     return EAPAUTH_OK;
 }
@@ -269,22 +271,35 @@ int send_response_h3c(const eapauth_t *user, uint8_t packet_id) {
 int send_response_md5(const eapauth_t *user, uint8_t packet_id, const uint8_t *md5data) {
     uint8_t chap[16] = {0};
     uint8_t chapbuf[128] = {0}; // id + password + md5data
-    size_t chapbuflen, passwordlen;
+    size_t chapbuflen, passwordlen, i;
     uint8_t packetbuf[128] = {0};
 
     if (user == NULL || md5data == NULL) return EAPAUTH_ERR;
 
-    passwordlen = strlen(user->password);
-    chapbuflen = 1 + passwordlen + 16;
+    switch(user->method) {
+        case EAP_METHOD_XOR: // xor(password, md5data)
+            strcpy(chap, user->password);
+            for (i = 0; i < 16; ++ i)
+                chap[i] ^= md5data[i];
+            break;
+        case EAP_METHOD_MD5: // MD5(id + password + md5data)
+        default:
+            passwordlen = strlen(user->password);
+            chapbuflen = 1 + passwordlen + 16;
 
-    chapbuf[0] = packet_id;
-    memcpy(chapbuf + 1, user->password, passwordlen);
-    memcpy(chapbuf + 1 + passwordlen, md5data, 16);
+            chapbuf[0] = packet_id;
+            memcpy(chapbuf + 1, user->password, passwordlen);
+            memcpy(chapbuf + 1 + passwordlen, md5data, 16);
 
-    MD5(chapbuf, chapbuflen, chap); // MD5(id + password + md5data) -> chap
+            MD5_CTX context;
+            MD5_Init(&context);
+            MD5_Update(&context, chapbuf, chapbuflen);
+            MD5_Final(chap, &context);
+            break;
+    }
 
     packetbuf[0] = sizeof(chap); // Value-Size
-    memcpy(packetbuf + 1, chap, 16); // MD5 Area
+    memcpy(packetbuf + 1, chap, sizeof(chap)); // MD5 Area
     strcpy(packetbuf + 1 + sizeof(chap), user->name); // Username
 
     eapol_t eap_md5;
