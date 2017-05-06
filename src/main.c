@@ -190,11 +190,13 @@ int main(int argc, char **argv) {
         display_msg(LOG_ERR, "You have to run the program as root\n");
         exit(EXIT_FAILURE);
     }
-    
+
     eapauth_t eapauth;
     memset(&eapauth, 0, sizeof(eapauth));
 
-    while ((argval = getopt_long(argc, argv, "u:p:i:m:dlhc", arglist, NULL)) != -1) {
+    // XXX: `getopt` and `getopt_long` seems to return an unsigned char value, which is different
+    // to all the other systems!
+    while ((argval = getopt_long(argc, argv, "u:p:i:m:dlhc", arglist, NULL)) != -1 && argval != 255) {
         switch (argval) {
             case 'h':
                 printf(usage_str);
