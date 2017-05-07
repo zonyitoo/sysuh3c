@@ -91,8 +91,10 @@ int main(int argc, char *const argv[]) {
     eap_method method = EAP_METHOD_XOR;
     bool daemon = false;
     bool color = false;
-    char argval;
-    while ((argval = getopt_long(argc, argv, "u:p:i:m:dhc", arglist, NULL)) != -1) {
+    int argval = 0;
+    // XXX: `getopt` and `getopt_long` seems to return an unsigned char value, which is different
+    // to all the other systems!
+    while ((argval = getopt_long(argc, argv, "u:p:i:m:dhc", arglist, NULL)) != -1 && argval != 255) {
         switch (argval) {
         case 'h':
             printf("Usage: sysuh3c [arg]\n"
