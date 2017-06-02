@@ -25,9 +25,29 @@ define Package/$(PKG_NAME)
 endef
 ```
 
-* You will get the `sysuh3c_[version]-1_[arch].ipk` in `bin/[arch]/package`
+* You will get the `sysuh3c_[version]-1_[arch].ipk` and `luci-app-sysuh3c_[version]-1_[arch].ipk` in `bin/[arch]/package`
 
+## Packages
+
+ * `sysuh3c_0.2-1_ar71xx.ipk` :  SYSU H3C comand line tool (without luci web configuration page) for ar71xx based router.
+ * `sysuh3c_0.2-1_ramips.ipk` :  SYSU H3C comand line tool (without luci web configuration page) for ramips based router.
+ * `luci-app-sysuh3c_0.2-1_all.ipk` : LuCI web configuration page for SYSU H3C (for all architecture).
+
+## Install
+
+ * Install the sysuh3c package. (skip if you have installed)
+ * Install the luci-app-sysuh3c package.
+ * You have to restart the router.
+ 
 ## Usage
+
+### Web Configuration
+
+ * After installing and restarting, you can find the sysh3c web configuration page in `Network -> SYS H3c`.
+ * Configure the sysuh3c.
+ * Save & Apply.
+ 
+### sysuh3c
 
 ```bash
 -h --help        print help screen

@@ -1,0 +1,36 @@
+#!/bin/sh /etc/rc.common
+
+START=50
+
+run_sysuh3c()
+{
+	local enable
+	config_get_bool enable $1 enable
+	
+	if [ $enable ]; then
+		local username
+		local password
+		local ifname
+		
+		config_get username $1 username
+		config_get password $1 password
+		config_get ifname $1 ifname
+		
+	    sysuh3c -u $username -p $password -i $ifname -d
+		
+		echo "SYSU H3C has started."
+	fi
+}
+
+start()
+{
+	config_load sysuh3c
+	config_foreach run_sysuh3c network
+}
+
+stop()
+{
+	killall sysuh3c
+
+	echo "SYSU H3C has stoped."
+}

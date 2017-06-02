@@ -1,0 +1,4 @@
+config network
+	option username ''
+	option password ''
+	option ifname 'eth0'
