@@ -42,7 +42,7 @@ int eap_handler(const eapauth_t *user, const eapol_t *data);
 int client_send(const eapauth_t *user, const eapol_t *data);
 int client_recv(const eapauth_t *user, eapol_t *data);
 
-void set_socket_timeout(const eapauth_t *user, __time_t sec);
+void set_socket_timeout(const eapauth_t *user, time_t sec);
 
 void status_notify_func(int statno) {
     fprintf(stderr, "%s\n", strstat(statno));
@@ -314,7 +314,7 @@ int send_response_md5(const eapauth_t *user, uint8_t packet_id, const uint8_t *m
     return client_send(user, &eap_md5);
 }
 
-void set_socket_timeout(const eapauth_t *user, __time_t sec) {
+void set_socket_timeout(const eapauth_t *user, time_t sec) {
     struct timeval timeout;
     timeout.tv_sec = sec;
     timeout.tv_usec = 0;
