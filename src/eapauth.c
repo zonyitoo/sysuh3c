@@ -198,7 +198,7 @@ int client_recv(const eapauth_t *user, eapol_t *data) {
         data->eap.eap_len = ntohs(*((uint16_t *)(&ptr[6])));
         if (data->eap.eap_len > 4) {
             data->eap.reqtype = ptr[8];
-            memcpy(data->eap.data, ptr + 10, data->eap.eap_len - 6);
+            memcpy(data->eap.data, ptr + 10, data->eap.eap_len);
         }
     }
 
