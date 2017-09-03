@@ -11,6 +11,7 @@ env.StaticLibrary('eapauth',
     [
         'eapauth.cpp', 
         'eapdef.cpp', 
-        'eaputils.cpp'
+        'eaputils.cpp',
+        'md5.cpp'
     ]
 )

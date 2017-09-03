@@ -12,7 +12,7 @@ namespace sysuh3c {
 
 class EAPAuth {
 public:
-    EAPAuth(const std::string &, const std::string &, const std::string &);
+    EAPAuth(const std::string &, const std::string &, const std::string &, eap_method);
     ~EAPAuth();
 
     void auth();
@@ -36,6 +36,7 @@ private:
     EAPClient eapclient;
     std::string user_name;
     std::string user_password;
+    eap_method md5_method;
 
     std::function<void(const std::string &)> display_promote;
     std::function<void(int statno)> status_notify;

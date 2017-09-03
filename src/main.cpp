@@ -81,16 +81,20 @@ int main(int argc, char *const argv[]) {
         {"user", required_argument, NULL, 'u'},
         {"password", required_argument, NULL, 'p'},
         {"iface", optional_argument, NULL, 'i'},
+        {"method", optional_argument, NULL, 'm'},
         {"daemonize", no_argument, NULL, 'd'},
         {"colorize", no_argument, NULL, 'c'},
         {NULL, 0, NULL, 0}
     };
 
     string name, password, iface("eth0");
+    eap_method method = EAP_METHOD_XOR;
     bool daemon = false;
     bool color = false;
-    char argval;
-    while ((argval = getopt_long(argc, argv, "u:p:i:dhc", arglist, NULL)) != -1) {
+    int argval = 0;
+    // XXX: `getopt` and `getopt_long` seems to return an unsigned char value, which is different
+    // to all the other systems!
+    while ((argval = getopt_long(argc, argv, "u:p:i:m:dhc", arglist, NULL)) != -1 && argval != 255) {
         switch (argval) {
         case 'h':
             printf("Usage: sysuh3c [arg]\n"
@@ -98,6 +102,7 @@ int main(int argc, char *const argv[]) {
                    "   -u --user       user account\n"
                    "   -p --password   password\n"
                    "   -i --iface      network interface (default eth0)\n"
+                   "   -m --method     EAP-MD5 CHAP method [xor/md5] (default xor)\n"
                    "   -d --daemonize  daemonize\n"
                    "   -c --colorize   colorize\n");
             exit(EXIT_SUCCESS);
@@ -109,6 +114,16 @@ int main(int argc, char *const argv[]) {
             break;
         case 'i':
             iface = optarg;
+            break;
+        case 'm':
+            if (string(optarg) == "xor")
+                method = EAP_METHOD_XOR;
+            else if (string(optarg) == "md5")
+                method = EAP_METHOD_MD5;
+            else {
+                cerr <<  "Argument Error! Method can only be xor or md5." << endl;
+                return EXIT_FAILURE;
+            }
             break;
         case 'd':
             daemon = true;
@@ -131,7 +146,7 @@ int main(int argc, char *const argv[]) {
         password = pwd;
     }
 
-    EAPAuth authservice(name, password, iface);
+    EAPAuth authservice(name, password, iface, method);
 
     authservice.set_promote_listener([] (const string & msg) {
         string cpmsg(std::move(msg));

@@ -83,11 +83,23 @@ EAPClient::EAPClient(const std::string &iface) {
         abort();
     }
 
+    recv_buf.resize(1600);
+
 #elif SYSTEM_DARWIN // FOR Darwin
     
-    if ((bpf_fd = open("/dev/bpf1", O_RDWR)) < 0) {
-        perror("open");
-        abort();
+    FILE* fp;
+    char bpf_num_str[80];
+    fp=popen("sysctl debug.bpf_maxdevices","r");
+    fgets(bpf_num_str,sizeof(bpf_num_str),fp);
+    int bpf_num = strtol(bpf_num_str + 22, NULL, 0);
+    for (int i = 0; i < bpf_num; i++) {
+        std::string bpf_path = "/dev/bpf" + std::to_string(i);
+        if ((bpf_fd = open(bpf_path.c_str(), O_RDWR)) >= 0)
+            break;
+        if (i == bpf_num - 1) {
+            perror("open");
+            abort();
+        }
     }
 
     struct ifreq ifr;
@@ -95,13 +107,16 @@ EAPClient::EAPClient(const std::string &iface) {
     strncpy(ifr.ifr_name, iface.c_str(), sizeof(ifr.ifr_name));
 
     struct bpf_program bpfpro;
-    struct timeval timeout;
-    size_t buf_len;
-    if ((ioctl(bpf_fd, BIOCGBLEN, &buf_len) == -1)
-            || (ioctl(bpf_fd, BIOCSETIF, &ifr) == -1)
-            || (ioctl(bpf_fd, BIOCSETF, &bpfpro) == -1)
-            || (ioctl(bpf_fd, BIOCFLUSH) == -1)
-            || (ioctl(bpf_fd, BIOCSRTIMEOUT, &timeout) == -1)) {
+    this->timeout.tv_sec = 30;
+    this->timeout.tv_usec = 0;
+    const int ci_immediate=1, cmplt = 1;
+    size_t buf_len, set_buf_len = 128;
+    if (ioctl(bpf_fd, BIOCSBLEN, &set_buf_len) == -1
+        || ioctl(bpf_fd, BIOCSETIF, &ifr) == -1
+        || ioctl(bpf_fd, BIOCIMMEDIATE, &ci_immediate) == -1
+        || ioctl(bpf_fd, BIOCSHDRCMPLT, &cmplt) == -1
+        || ioctl(bpf_fd, BIOCGBLEN, &buf_len) == -1
+        || ioctl(bpf_fd, BIOCSRTIMEOUT, &this->timeout) == -1) {
         perror("ioctl");
         close(bpf_fd);
         abort();
@@ -136,8 +151,9 @@ EAPClient::EAPClient(const std::string &iface) {
     memcpy(mac_addr, ptr, sizeof(mac_addr));
     delete []macbuf;
 
-    this->timeout.tv_sec = 30;
-    this->timeout.tv_usec = 0;
+    // save mac address
+    memcpy(this->mac_addr, mac_addr, 6);
+
 #else
 #error SYSUH3C doesn't support your platform.
 #endif
@@ -155,6 +171,7 @@ EAPClient::EAPClient(const std::string &iface) {
     copy(begin(mac_addr), end(mac_addr), itr);
     uint16_t etype = htons(ETHERTYPE_PAE);
     *(uint16_t *)(ethernet_header.data() + sizeof(PAE_GROUP_ADDR) + sizeof(mac_addr)) = etype;
+
 }
 
 EAPClient::~EAPClient() {
@@ -183,6 +200,8 @@ EAPClient &EAPClient::recv(eapol_t &eapol) {
                        (struct sockaddr *) &sock_addr, &sock_addr_len)) <= 0) {
         throw EAPAuthException("Socket recv error");
     }
+    // Remove header
+    uint8_t *buf = recv_buf.data() + sizeof(ethernet_header_t);
     #elif SYSTEM_DARWIN
     fd_set readset;
     FD_ZERO(&readset);
@@ -197,10 +216,18 @@ EAPClient &EAPClient::recv(eapol_t &eapol) {
     if ((len = read(bpf_fd, recv_buf.data(), recv_buf.size())) == -1) {
         throw EAPAuthException("BPF read error");
     }
+
+    // check mac address and header
+    ethernet_header_t *ethernet_header = (ethernet_header_t *)(recv_buf.data() + 18);
+    if (memcmp(ethernet_header->dest, this->mac_addr, sizeof(mac_addr_t)) != 0
+        || ethernet_header->type != 0x8e88) {
+        eapol.type = -1;
+        return *this;
+    }
+    // Remove header
+    uint8_t *buf = recv_buf.data() + 18 + sizeof(ethernet_header_t);
     #endif
 
-    // Remove header
-    uint8_t *buf = recv_buf.data() + sizeof(ethernet_header_t);
     if (len - sizeof(ethernet_header_t) == 0) return *this;
 
     eapol.vers = buf[0];
