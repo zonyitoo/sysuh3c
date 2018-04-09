@@ -59,7 +59,7 @@ void display_promote_func(int priority, const char *format, ...) {
 static void (*status_notify)(int) = status_notify_func;
 static void (*display_promote)(int, const char *, ...) = display_promote_func;
 
-int eapauth_init(eapauth_t *user, const char *iface, eap_method method) {
+int eapauth_init(eapauth_t *user, const char *iface, eap_method method, uint8_t *group_addr) {
     uint8_t mac_addr_buf[6] = {0};
     struct timeval timeout;
     struct ifreq ifr; 
@@ -112,7 +112,7 @@ int eapauth_init(eapauth_t *user, const char *iface, eap_method method) {
         return EAPAUTH_ERR;
     }
 
-    get_ethernet_header(mac_addr_buf, PAE_GROUP_ADDR, ETHERTYPE_PAE, user->ethernet_header);
+    get_ethernet_header(mac_addr_buf, group_addr, ETHERTYPE_PAE, user->ethernet_header);
 
     user->method = method;
 

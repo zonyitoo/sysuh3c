@@ -154,6 +154,7 @@ static struct option arglist[] = {
         {"help", no_argument, NULL, 'h'},
         {"user", required_argument, NULL, 'u'},
         {"password", required_argument, NULL, 'p'},
+        {"broadcast", optional_argument, NULL, 'b'},
         {"iface", optional_argument, NULL, 'i'},
         {"method", optional_argument, NULL, 'm'},
         {"daemonize", no_argument, NULL, 'd'},
@@ -166,6 +167,7 @@ static const char usage_str[] = "Usage: sysuh3c [arg]\n"
                 "   -h --help       print this screen\n"
                 "   -u --user       user account\n"
                 "   -p --password   password\n"
+                "   -b --broadcast  broadcast address (default 01:80:c2:00:00:03)\n"
                 "   -i --iface      network interface (default eth0)\n"
                 "   -m --method     EAP-MD5 CHAP method [xor/md5] (default xor)\n"
                 "   -d --daemonize  daemonize\n"
@@ -180,6 +182,9 @@ int main(int argc, char **argv) {
     char argval;
     eap_method method = EAP_METHOD_XOR;
     FILE *fp = NULL;
+
+    uint8_t custom_addr[6];
+    memcpy(custom_addr, PAE_GROUP_ADDR, 6);
 
     _Bool toLogoff = 0;
 
@@ -196,7 +201,7 @@ int main(int argc, char **argv) {
 
     // XXX: `getopt` and `getopt_long` seems to return an unsigned char value, which is different
     // to all the other systems!
-    while ((argval = getopt_long(argc, argv, "u:p:i:m:dlhc", arglist, NULL)) != -1 && argval != 255) {
+    while ((argval = getopt_long(argc, argv, "u:p:i:m:b:dlhc", arglist, NULL)) != -1 && argval != 255) {
         switch (argval) {
             case 'h':
                 printf(usage_str);
@@ -214,6 +219,15 @@ int main(int argc, char **argv) {
                     exit(EXIT_FAILURE);
                 }
                 strcpy(eapauth.password, optarg);
+                break;
+            case 'b':
+                display_msg(LOG_INFO, "warning: using custom broadcast");
+                if (sscanf("20:20:20:20:20:20", "%hhx:%hhx:%hhx:%hhx:%hhx:%hhx", 
+                    custom_addr+0, custom_addr+1, custom_addr+2, 
+                    custom_addr+3, custom_addr+4, custom_addr+5) != 6) {
+                    display_msg(LOG_ERR, "invalid broadcast mac address");
+                    exit(EXIT_FAILURE);
+                }
                 break;
             case 'i':
                 strcpy(iface, optarg);
@@ -242,6 +256,7 @@ int main(int argc, char **argv) {
         }
     }
 
+
     fp = fopen(lockfname, "r");
     if (fp != NULL) {
         pid_t pid;
@@ -265,7 +280,7 @@ int main(int argc, char **argv) {
         free(expr);
     }
 
-    if (eapauth_init(&eapauth, iface, method) != 0)
+    if (eapauth_init(&eapauth, iface, method, custom_addr) != 0)
         exit(EXIT_FAILURE);
 
     if (toLogoff) {

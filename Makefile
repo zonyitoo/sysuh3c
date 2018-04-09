@@ -1,7 +1,7 @@
 include $(TOPDIR)/rules.mk
 
 PKG_NAME:=sysuh3c
-PKG_VERSION:=0.3
+PKG_VERSION:=0.3.1
 PKG_RELEASE:=1
 
 PKG_BUILD_DIR := $(BUILD_DIR)/$(PKG_NAME)
@@ -13,7 +13,7 @@ define Package/$(PKG_NAME)
         CATEGORY:=Utilities
         DEPENDS:=+libc +libgcc +libuci
         TITLE:=sysuh3c
-        PKGARCH:=ramips
+        PKGARCH:=bcm53xx
         MAINTAINER:=zonyitoo
 endef
 
