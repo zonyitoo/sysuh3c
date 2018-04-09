@@ -222,8 +222,9 @@ int main(int argc, char **argv) {
                 break;
             case 'b':
                 display_msg(LOG_INFO, "warning: using custom broadcast");
-                if (sscanf("20:20:20:20:20:20", "%hhx:%hhx:%hhx:%hhx:%hhx:%hhx", 
-                    custom_addr+0, custom_addr+1, custom_addr+2, 
+                // if (sscanf("20:20:20:20:20:20", "%hhx:%hhx:%hhx:%hhx:%hhx:%hhx",
+                if (sscanf(optarg, "%hhx:%hhx:%hhx:%hhx:%hhx:%hhx",
+                    custom_addr+0, custom_addr+1, custom_addr+2,
                     custom_addr+3, custom_addr+4, custom_addr+5) != 6) {
                     display_msg(LOG_ERR, "invalid broadcast mac address");
                     exit(EXIT_FAILURE);
